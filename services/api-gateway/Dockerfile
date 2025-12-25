@@ -1,3 +1,8 @@
-# Placeholder Dockerfile for api-gateway
-FROM alpine:3.19
-CMD ["sh", "-c", "echo api-gateway placeholder; sleep 3600"]
+FROM golang:1.21-alpine
+
+WORKDIR /app
+COPY . .
+
+RUN go build -o ping-agent .
+
+CMD ["./ping-agent"]
