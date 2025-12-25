@@ -1,3 +1,12 @@
-# Placeholder Dockerfile for ping-agent
+# Build stage
+FROM golang:1.22-alpine AS build
+WORKDIR /src
+COPY go.mod .
+COPY main.go .
+RUN CGO_ENABLED=0 go build -o /out/ping-agent ./main.go
+
+# Runtime stage
 FROM alpine:3.19
-CMD ["sh", "-c", "echo ping-agent placeholder; sleep 3600"]
+RUN apk add --no-cache ca-certificates
+COPY --from=build /out/ping-agent /usr/local/bin/ping-agent
+CMD ["ping-agent"]
