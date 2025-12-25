@@ -1,0 +1,19 @@
+# Placeholder deployment for ping-agent
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ping-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ping-agent
+  template:
+    metadata:
+      labels:
+        app: ping-agent
+    spec:
+      containers:
+        - name: ping-agent
+          image: ping-agent:latest
+          command: ["sh", "-c", "echo ping-agent placeholder; sleep 3600"]
