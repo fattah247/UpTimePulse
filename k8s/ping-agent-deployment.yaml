@@ -16,4 +16,6 @@ spec:
       - name: ping-agent
         image: ping-agent:latest
         imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
 
