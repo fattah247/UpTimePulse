@@ -3,11 +3,11 @@
 Starter project for a simple uptime monitoring platform.
 
 ## Project Layout
-- `services/` contains the application services.
-- `k8s/` contains Kubernetes manifests.
-- `ci-cd/` contains CI/CD pipeline configuration.
-- `monitoring/` contains Prometheus and Grafana configuration.
-- `terraform/` contains infrastructure as code (optional).
+- `services/` contains the application services (ping-agent, api-gateway, dashboard-ui).
+- `k8s/` contains Kubernetes manifests used to run everything in a cluster.
+- `ci-cd/` contains CI/CD pipeline configuration (automated build/test/deploy).
+- `monitoring/` contains Prometheus (metrics collection) and Grafana (dashboards).
+- `terraform/` contains infrastructure as code to provision cloud resources.
 - `docs/` contains documentation and diagrams.
 
 ## Quickstart
@@ -28,6 +28,7 @@ eval $(minikube -p minikube docker-env)
 docker build -t ping-agent:latest services/ping-agent
 kubectl apply -f k8s/ping-agent-deployment.yaml
 kubectl rollout restart deployment ping-agent
+kubectl rollout status deployment ping-agent
 kubectl port-forward deploy/ping-agent 18080:8080
 ```
 
@@ -39,6 +40,36 @@ curl -v http://localhost:18080/metrics
 
 For command explanations, see [Command Notes](#command-notes) and [Flag Cheat Sheet](#flag-cheat-sheet) below.
 
+### API Gateway (FastAPI) Quickstart
+Build and run the API gateway in Minikube:
+
+```
+eval $(minikube -p minikube docker-env)
+docker build -t api-gateway:latest services/api-gateway
+kubectl apply -f k8s/api-gateway-deployment.yaml
+kubectl apply -f k8s/api-gateway-service.yaml
+kubectl rollout restart deployment api-gateway
+kubectl rollout status deployment api-gateway
+kubectl port-forward svc/api-gateway 8080:8080
+```
+
+Test it:
+
+```
+curl -v http://localhost:8080/health
+```
+
+Note: `api-gateway` uses `imagePullPolicy: IfNotPresent`, so you need to build the image inside Minikube for local runs.
+
+What each command means:
+- `eval $(minikube -p minikube docker-env)` points Docker at Minikube's Docker daemon.
+- `docker build -t api-gateway:latest services/api-gateway` builds the image inside Minikube.
+- `kubectl apply -f k8s/api-gateway-deployment.yaml` creates/updates the Deployment.
+- `kubectl apply -f k8s/api-gateway-service.yaml` creates/updates the Service.
+- `kubectl rollout restart deployment api-gateway` restarts pods to pick up the new image.
+- `kubectl rollout status deployment api-gateway` waits for the Deployment to become ready.
+- `kubectl port-forward svc/api-gateway 8080:8080` tunnels local port `8080` to the Service.
+
 ## Command Notes
 Short explanations of the commands used above.
 
@@ -49,6 +80,7 @@ Short explanations of the commands used above.
 - `kubectl apply -f k8s/ping-agent-deployment.yaml` creates or updates resources from a file.
 - `kubectl rollout restart deployment ping-agent` restarts pods to pick up new images/config.
 - `kubectl port-forward deploy/ping-agent 18080:8080` tunnels a pod port to your machine.
+  - If the pod is restarting, run `kubectl rollout status deployment ping-agent` and try again.
 
 ### Docker
 - `docker build -t ping-agent:dev .` builds and tags an image from the current directory.
@@ -166,6 +198,7 @@ Runs Prometheus and mounts the config.
 - `containers.image`: Prometheus image version.
 - `args`: tells Prometheus where the config and data directory are.
 - `volumeMounts` + `volumes`: mounts the ConfigMap to `/etc/prometheus`.
+- `volumeMounts` + `volumes`: mounts a PVC at `/prometheus` for data persistence.
 - `ports.containerPort: 9090`: Prometheus UI and API.
 
 ### `k8s/prometheus-service.yaml`
@@ -174,17 +207,30 @@ Exposes Prometheus inside the cluster.
 - `selector`: matches the Prometheus pod.
 - `port`/`targetPort`: exposes `9090` for UI/API access.
 
+### `k8s/prometheus-pvc.yaml`
+Persists Prometheus time-series data across restarts.
+
+- `kind: PersistentVolumeClaim`: requests storage from the cluster.
+- `storage: 5Gi`: size of the requested volume.
+
 ### `monitoring/grafana-deployment.yaml`
 Runs Grafana.
 
 - `containers.image`: Grafana image version.
 - `ports.containerPort: 3000`: Grafana UI port.
+- `volumeMounts` + `volumes`: mounts a PVC at `/var/lib/grafana` so dashboards/users persist.
 
 ### `monitoring/grafana-service.yaml`
 Exposes Grafana in the cluster.
 
 - `type: ClusterIP`: internal-only service by default.
 - `port`/`targetPort`: exposes `3000`.
+
+### `monitoring/grafana-pvc.yaml`
+Persists Grafana dashboards and user settings across restarts.
+
+- `kind: PersistentVolumeClaim`: requests storage from the cluster.
+- `storage: 5Gi`: size of the requested volume.
 
 ## Grafana Dashboard (How It Works and How To Apply)
 Grafana dashboards are JSON documents. We keep one at `monitoring/grafana-dashboard.json`.
@@ -204,6 +250,16 @@ Key fields you’ll see:
 - Panel 3: `rate(ping_latency_seconds_bucket[1m])` (heatmap)
 - Panel 4: average latency line graph using  
   `rate(ping_latency_seconds_sum[1m]) / rate(ping_latency_seconds_count[1m])`
+
+### Dashboard Coverage Summary
+| Feature                               | PromQL      | Panel Type   | Purpose                             |
+| ------------------------------------- | ----------- | ------------ | ----------------------------------- |
+| Uptime %                              | ✅          | Stat         | System-wide reliability             |
+| API Gateway total requests            | ✅          | Stat         | Traffic level                       |
+| API Gateway status breakdown          | ✅          | Bar Gauge    | Error monitoring                    |
+| API Gateway latency P95               | ✅          | Heatmap      | Performance under load              |
+| Table of targets with success/failure | ➖ (via API) | Table/Stat   | Drilldown per target (stretch goal) |
+| Alerts (e.g., ping failures)          | ✅          | Alert config | Early warning system                |
 
 ### Apply the Dashboard in Grafana
 1) Port-forward Grafana:
@@ -227,6 +283,10 @@ kubectl port-forward deployment/grafana 3000:3000
 - Select the Prometheus data source
 - Import
 
+## Persistence Notes
+Prometheus and Grafana are now configured with PVCs so data and dashboards survive restarts.
+If you redeploy the Pods, your metrics history and Grafana settings should remain.
+
 ## Troubleshooting Notes
 This section captures the main issues we hit while running the ping-agent and how we resolved them.
 
@@ -240,6 +300,8 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - `kubectl apply` failed with OpenAPI errors (cluster not running or context stale).
 - Port-forward to `:8080` returned `connection refused` (pod was running an old image without the metrics server).
 - Go build errors (missing `go.sum`, Go version mismatch, syntax errors in `main.go`).
+- Prometheus/Grafana rollouts stuck due to PVC lock during rolling updates.
+- Applying `monitoring/` failed because it contains non-Kubernetes files.
 
 ### Resolutions
 - Start Docker Desktop; reset Docker env with `eval $(minikube docker-env -u)` when needed.
@@ -249,8 +311,62 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Rebuild and restart the deployment to pick up the new binary (`kubectl rollout restart deployment ping-agent`).
 - Update Dockerfile to include `go.sum` and use the correct Go version.
 - Fix `main.go` typos and ensure `http.ListenAndServe(":8080", nil)` is running.
+- Use `strategy: Recreate` for Prometheus/Grafana when using PVCs, then delete old pods so only one holds the lock.
+- Apply only Kubernetes manifests (`k8s/` and specific `monitoring/*.yaml`) and keep `monitoring/*.json` for Grafana import.
 
 ### Verification Steps
 - `kubectl logs -l app=ping-agent --tail=20` shows ping logs and metrics server start line.
 - `kubectl port-forward deploy/ping-agent 18080:8080`
 - `curl -v http://localhost:18080/metrics` returns `HTTP/1.1 200 OK` and metric output.
+
+## Full Test Run (From Scratch)
+This is a complete, copy-paste path to rebuild and validate everything.
+
+### 1) Build images inside Minikube
+```
+cd /Users/muhammadfattah/Documents/Projects/Git/Active/UpTimePulse
+eval $(minikube -p minikube docker-env)
+docker build -t ping-agent:latest services/ping-agent
+docker build -t api-gateway:latest services/api-gateway
+```
+
+### 2) Apply Kubernetes manifests
+```
+kubectl apply -f k8s/
+kubectl apply -f monitoring/grafana-deployment.yaml
+kubectl apply -f monitoring/grafana-service.yaml
+kubectl apply -f monitoring/grafana-pvc.yaml
+```
+
+### 3) Restart deployments and wait for readiness
+```
+kubectl rollout restart deployment ping-agent
+kubectl rollout restart deployment api-gateway
+kubectl rollout restart deployment prometheus
+kubectl rollout restart deployment grafana
+
+kubectl rollout status deployment ping-agent
+kubectl rollout status deployment api-gateway
+kubectl rollout status deployment prometheus
+kubectl rollout status deployment grafana
+```
+
+### 4) Port-forward and test endpoints
+```
+kubectl port-forward deploy/ping-agent 18080:8080
+kubectl port-forward svc/api-gateway 8080:8080
+kubectl port-forward deploy/prometheus 9090:9090
+kubectl port-forward deploy/grafana 3000:3000
+```
+
+In separate terminals:
+```
+curl -v http://localhost:18080/metrics
+curl -v http://localhost:8080/healthz
+curl -v http://localhost:8080/uptime-summary
+```
+
+### 5) Grafana
+- Open `http://localhost:3000`
+- Add Prometheus data source: `http://prometheus:9090`
+- Import `monitoring/grafana-dashboard.json`
