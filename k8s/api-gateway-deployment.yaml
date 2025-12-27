@@ -1,4 +1,3 @@
-# Placeholder deployment for api-gateway
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,8 +11,14 @@ spec:
     metadata:
       labels:
         app: api-gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: api-gateway
           image: api-gateway:latest
-          command: ["sh", "-c", "echo api-gateway placeholder; sleep 3600"]
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
