@@ -22,3 +22,8 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
+          env:
+            - name: PING_AGENT_METRICS_URL
+              value: "http://ping-agent:8080/metrics"
+            - name: PING_TARGET_URL
+              value: "https://google.com"
