@@ -4,7 +4,7 @@ global:
 scrape_configs:
   - job_name: "api-gateway"
     static_configs:
-      - targets: ["api-gateway:8000"]
+      - targets: ["api-gateway:8080"]
   - job_name: "ping-agent"
     static_configs:
       - targets: ["ping-agent.default.svc.cluster.local:8080"]
