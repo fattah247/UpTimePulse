@@ -1,8 +1,11 @@
-FROM golang:1.21-alpine
+FROM python:3.11-slim
 
 WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
 
-RUN go build -o ping-agent .
-
-CMD ["./ping-agent"]
+EXPOSE 8080
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
