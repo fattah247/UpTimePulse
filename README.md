@@ -2,6 +2,17 @@
 
 Starter project for a simple uptime monitoring platform.
 
+## Architecture Overview
+High-level flow and responsibilities:
+
+- `ping-agent` pings a target and exposes Prometheus metrics on `/metrics`.
+- `Prometheus` scrapes metrics from `ping-agent` and `api-gateway` and stores time‑series data.
+- `Grafana` visualizes Prometheus data with dashboards.
+- `api-gateway` reads `ping-agent` metrics and serves summaries via HTTP endpoints.
+
+Data flow: `ping-agent` → `Prometheus` → `Grafana`  
+Control/API flow: `client` → `api-gateway` → `ping-agent` metrics
+
 ## Project Layout
 - `services/` contains the application services (ping-agent, api-gateway, dashboard-ui).
 - `k8s/` contains Kubernetes manifests used to run everything in a cluster.
@@ -69,6 +80,14 @@ What each command means:
 - `kubectl rollout restart deployment api-gateway` restarts pods to pick up the new image.
 - `kubectl rollout status deployment api-gateway` waits for the Deployment to become ready.
 - `kubectl port-forward svc/api-gateway 8080:8080` tunnels local port `8080` to the Service.
+
+## What the API Does
+Endpoints provided by `api-gateway`:
+
+- `GET /healthz` → internal healthcheck.
+- `GET /targets` → list monitored URLs.
+- `GET /uptime-summary` → success/failure counts + availability %.
+- `GET /metrics` → Prometheus metrics for the api-gateway itself.
 
 ## Command Notes
 Short explanations of the commands used above.
@@ -282,6 +301,12 @@ kubectl port-forward deployment/grafana 3000:3000
 - Upload `monitoring/grafana-dashboard.json`
 - Select the Prometheus data source
 - Import
+
+## Screenshots (Placeholders)
+Add screenshots here later:
+- Architecture diagram
+- Grafana dashboard
+- Prometheus targets page
 
 ## Persistence Notes
 Prometheus and Grafana are now configured with PVCs so data and dashboards survive restarts.
