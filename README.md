@@ -2,18 +2,15 @@
 
 Starter project for a simple uptime monitoring platform.
 
-## Architecture Overview
-High-level flow and responsibilities:
+## Architecture overview
+Here’s the quick mental model:
 
-- `ping-agent` pings a target and exposes Prometheus metrics on `/metrics`.
-- `Prometheus` scrapes metrics from `ping-agent` and `api-gateway` and stores time‑series data.
-- `Grafana` visualizes Prometheus data with dashboards.
-- `api-gateway` reads `ping-agent` metrics and serves summaries via HTTP endpoints.
+`ping-agent` pings a URL and exposes `/metrics`. Prometheus scrapes it (and `api-gateway`), stores time‑series data, and Grafana draws the graphs. The `api-gateway` reads ping‑agent metrics and exposes JSON summaries so a client doesn’t have to read raw Prometheus text.
 
-Data flow: `ping-agent` → `Prometheus` → `Grafana`  
-Control/API flow: `client` → `api-gateway` → `ping-agent` metrics
+Data path: `ping-agent` → `Prometheus` → `Grafana`  
+API path: `client` → `api-gateway` → `ping-agent` metrics
 
-## Project Layout
+## Project layout
 - `services/` contains the application services (ping-agent, api-gateway, dashboard-ui).
 - `k8s/` contains Kubernetes manifests used to run everything in a cluster.
 - `ci-cd/` contains CI/CD pipeline configuration (automated build/test/deploy).
@@ -21,8 +18,8 @@ Control/API flow: `client` → `api-gateway` → `ping-agent` metrics
 - `terraform/` contains infrastructure as code to provision cloud resources.
 - `docs/` contains documentation and diagrams.
 
-## Quickstart
-Run the ping-agent locally with Docker:
+## Quickstart (local Docker)
+Run ping‑agent locally:
 
 ```
 cd services/ping-agent
@@ -30,7 +27,8 @@ docker build -t ping-agent:dev .
 docker run --rm ping-agent:dev
 ```
 
-Run the ping-agent in Minikube and check metrics:
+## Quickstart (Minikube)
+Ping‑agent in Minikube:
 
 ```
 minikube start
@@ -49,9 +47,9 @@ In another terminal:
 curl -v http://localhost:18080/metrics
 ```
 
-For command explanations, see [Command Notes](#command-notes) and [Flag Cheat Sheet](#flag-cheat-sheet) below.
+For the command explanations, jump to [Command Notes](#command-notes) and [Flag Cheat Sheet](#flag-cheat-sheet).
 
-### API Gateway (FastAPI) Quickstart
+## API Gateway (FastAPI) Quickstart
 Build and run the API gateway in Minikube:
 
 ```
@@ -67,10 +65,10 @@ kubectl port-forward svc/api-gateway 8080:8080
 Test it:
 
 ```
-curl -v http://localhost:8080/health
+curl -v http://localhost:8080/healthz
 ```
 
-Note: `api-gateway` uses `imagePullPolicy: IfNotPresent`, so you need to build the image inside Minikube for local runs.
+Note: `api-gateway` uses `imagePullPolicy: IfNotPresent`. Build inside Minikube or it won’t find the image.
 
 What each command means:
 - `eval $(minikube -p minikube docker-env)` points Docker at Minikube's Docker daemon.
@@ -81,13 +79,13 @@ What each command means:
 - `kubectl rollout status deployment api-gateway` waits for the Deployment to become ready.
 - `kubectl port-forward svc/api-gateway 8080:8080` tunnels local port `8080` to the Service.
 
-## What the API Does
-Endpoints provided by `api-gateway`:
+## What the API does
+Endpoints from `api-gateway`:
 
-- `GET /healthz` → internal healthcheck.
-- `GET /targets` → list monitored URLs.
+- `GET /healthz` → simple healthcheck.
+- `GET /targets` → list monitored URLs (currently just one).
 - `GET /uptime-summary` → success/failure counts + availability %.
-- `GET /metrics` → Prometheus metrics for the api-gateway itself.
+- `GET /metrics` → Prometheus metrics for api‑gateway itself.
 
 ## Command Notes
 Short explanations of the commands used above.
@@ -98,8 +96,8 @@ Short explanations of the commands used above.
 - `eval $(minikube -p minikube docker-env)` points Docker at Minikube's Docker daemon.
 - `kubectl apply -f k8s/ping-agent-deployment.yaml` creates or updates resources from a file.
 - `kubectl rollout restart deployment ping-agent` restarts pods to pick up new images/config.
-- `kubectl port-forward deploy/ping-agent 18080:8080` tunnels a pod port to your machine.
-  - If the pod is restarting, run `kubectl rollout status deployment ping-agent` and try again.
+- `kubectl port-forward deploy/ping-agent 18080:8080` tunnels a pod port to your machine.  
+  If the pod is restarting, run `kubectl rollout status deployment ping-agent` and try again.
 
 ### Docker
 - `docker build -t ping-agent:dev .` builds and tags an image from the current directory.
@@ -121,71 +119,70 @@ Common flags used in this project:
 - `-p` = profile name (used by `minikube`)
 - `--rm` = remove container after exit (used by `docker run`)
 
-## Why We Added Each Piece
-This section explains the purpose behind each addition, not just the steps.
+## Why these pieces exist
+### Metrics producer (ping-agent)
+It’s the source of truth. It pings a URL, then exposes:
+- counters (`ping_success_total`, `ping_failure_total`)
+- histogram (`ping_latency_seconds`)
+- `/metrics` for scraping
 
-### Metrics Producer (ping-agent)
-Goal: generate meaningful metrics inside the app so you can observe behavior.
+Without this, there’s nothing to observe.
 
-What we added and why:
-- A periodic HTTP ping loop to produce real uptime/latency data.
-- `ping_success_total`, `ping_failure_total`, `ping_latency_seconds` so you can count outcomes and measure latency.
-- A `/metrics` HTTP endpoint so external systems can scrape the metrics.
-- A local `curl` check to confirm the metrics are emitted correctly.
+### Metrics collection (Prometheus)
+Prometheus pulls `/metrics` every 15s and stores the history. That’s the difference between “I can see a number now” and “I can graph the last 24 hours.”
 
-This is the data source. By itself, it only shows the current state inside the app.
+Retention/storage notes:
+- Retention is set to `14d` via `--storage.tsdb.retention.time=14d` in `k8s/prometheus-deployment.yaml`.
+- PVC size is `5Gi` in `k8s/prometheus-pvc.yaml`.
+- Prometheus storage docs: [https://prometheus.io/docs/prometheus/latest/storage/](https://prometheus.io/docs/prometheus/latest/storage/)
 
-### Metrics Collection (Prometheus)
-Goal: collect, store, and query metrics over time.
+Sizing approach (practical):
+- After 24h of scraping, check `prometheus_tsdb_head_series` and `prometheus_tsdb_head_chunks`.
+- Look at disk usage from inside the pod: `du -sh /prometheus`.
+- Extrapolate: if 24h uses 1Gi, then 7d is roughly 7Gi (plus headroom).
 
-What Prometheus does:
-- Scrapes `/metrics` on a schedule (default 15s).
-- Stores time-series data so you can query history with PromQL.
+PromQL to sanity‑check volume:
+```
+prometheus_tsdb_head_series
+prometheus_tsdb_head_chunks
+rate(prometheus_tsdb_head_samples_appended_total[5m])
+```
 
-Why it matters:
-- Without Prometheus, metrics disappear on restart.
-- You can't graph trends, alert, or analyze failures without storage.
+Automated snapshot (script):
+- `scripts/prometheus-sizing.sh` collects the head metrics and `/prometheus` disk usage.
+- Run: `scripts/prometheus-sizing.sh` (uses port 9090 by default).
 
-### Metrics Cheat Sheet
+### Metrics cheat sheet
 - `ping_success_total` (counter) → Stat panel
 - `ping_failure_total` (counter) → Stat panel
 - `ping_latency_seconds` (histogram) → Heatmap/Histogram panel
 - `rate(ping_latency_seconds_sum[1m]) / rate(ping_latency_seconds_count[1m])` (avg latency) → Line graph
 
-## Go Files (go.mod and go.sum)
-These are the standard files used by Go modules.
+## Go files (go.mod and go.sum)
+These are standard Go module files.
 
-- `go.mod` declares the module name, the Go version, and the direct dependencies your code uses.
-- `go.sum` records exact checksums of all module versions (direct and indirect) so builds are reproducible and verified.
+- `go.mod` declares the module name, the Go version, and direct dependencies.
+- `go.sum` records exact checksums so builds are reproducible.
 
-Why they matter:
-- Without `go.mod`, the Go toolchain doesn't know which dependencies to use.
-- Without `go.sum`, the build can't verify module integrity (and Docker builds will fail).
+No `go.sum`, no reliable build. Docker builds will fail.
 
-## What You Have Learned So Far
-Core skills you picked up while building and running this project:
+## What you’ve learned so far
+Concrete skills you now have:
 
-- Building a Go service that emits Prometheus metrics and exposes them on `/metrics`.
-- Containerizing the service with Docker and understanding image tags and build contexts.
-- Running a local Kubernetes cluster with Minikube and switching contexts.
-- Using Deployments and Services to run and expose pods in Kubernetes.
-- Wiring Prometheus to scrape metrics and validating output with `curl`.
-- Adding Grafana for visualization and importing dashboards.
-- Debugging common issues (wrong working directory, image not in Minikube, port-forward failures).
+- Build a Go service that emits Prometheus metrics.
+- Package it with Docker and run it locally.
+- Run a Minikube cluster and deploy with Kubernetes YAML.
+- Connect Prometheus → Grafana and see live graphs.
+- Debug real issues (image not in Minikube, stale pod during rollout, port‑forward failures).
 
-## How Everything Connects
-The components form a simple metrics pipeline:
+## How everything connects
+Short version:
 
-- `ping-agent` generates metrics and serves them on `:8080/metrics`.
-- `ping-agent` Service gives the pod a stable DNS name for scraping.
-- Prometheus reads `prometheus.yml` from a ConfigMap and scrapes `ping-agent`.
-- Grafana queries Prometheus and visualizes the data with the dashboard JSON.
+`ping-agent` → `Prometheus` → `Grafana`
 
-In short: ping-agent → Prometheus → Grafana.
+The Service gives `ping-agent` a stable DNS name, Prometheus scrapes it, and Grafana reads Prometheus. The `api-gateway` sits alongside to expose a human‑friendly JSON API.
 
-## YAML Files Explained
-Below is a short guide for each YAML file and why it exists.
-
+## YAML files explained
 ### `k8s/ping-agent-deployment.yaml`
 Runs the ping-agent container.
 
@@ -219,6 +216,7 @@ Runs Prometheus and mounts the config.
 - `volumeMounts` + `volumes`: mounts the ConfigMap to `/etc/prometheus`.
 - `volumeMounts` + `volumes`: mounts a PVC at `/prometheus` for data persistence.
 - `ports.containerPort: 9090`: Prometheus UI and API.
+- `strategy.type: Recreate`: avoids PVC lock conflicts by ensuring a single pod.
 
 ### `k8s/prometheus-service.yaml`
 Exposes Prometheus inside the cluster.
@@ -251,74 +249,71 @@ Persists Grafana dashboards and user settings across restarts.
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
 - `storage: 5Gi`: size of the requested volume.
 
-## Grafana Dashboard (How It Works and How To Apply)
+## Grafana dashboard (how it works + how to apply)
 Grafana dashboards are JSON documents. We keep one at `monitoring/grafana-dashboard.json`.
 
-### What’s Inside the Dashboard JSON
-Key fields you’ll see:
+Key fields inside the JSON:
+- `title`
+- `refresh`
+- `panels`
+- `targets` (PromQL)
+- `gridPos`
 
-- `title`: dashboard name shown in Grafana.
-- `refresh`: auto-refresh interval.
-- `panels`: list of visualizations.
-- `targets`: PromQL queries for each panel.
-- `gridPos`: panel position and size in the layout.
+Panels in this dashboard:
+- Total API Requests (5m) → `sum(increase(api_gateway_requests_total[5m]))`
+- Successful Pings → `ping_success_total`
+- Failed Pings → `ping_failure_total`
+- Availability % → `100 * (ping_success_total / (ping_success_total + ping_failure_total))`
+- Requests by Status (rate) → `sum by (status) (rate(api_gateway_requests_total[1m]))`
+- Ping Success/Failures (rate) → `rate(ping_success_total[1m])`, `rate(ping_failure_total[1m])`
+- Requests by Path (5m) → `sum by (path) (increase(api_gateway_requests_total[5m]))`
+- API Latency Histogram (bucket rate) → `sum(rate(api_gateway_request_duration_seconds_bucket[5m])) by (le)`
+- Ping Latency Histogram (1m rate) → `rate(ping_latency_seconds_bucket[1m])`
+- Average Ping Latency (s) → `rate(ping_latency_seconds_sum[1m]) / rate(ping_latency_seconds_count[1m])`
 
-### Panels in This Dashboard
-- Panel 1: `ping_success_total` (stat)
-- Panel 2: `ping_failure_total` (stat)
-- Panel 3: `rate(ping_latency_seconds_bucket[1m])` (heatmap)
-- Panel 4: average latency line graph using  
-  `rate(ping_latency_seconds_sum[1m]) / rate(ping_latency_seconds_count[1m])`
-
-### Dashboard Coverage Summary
+Dashboard coverage summary:
 | Feature                               | PromQL      | Panel Type   | Purpose                             |
 | ------------------------------------- | ----------- | ------------ | ----------------------------------- |
 | Uptime %                              | ✅          | Stat         | System-wide reliability             |
 | API Gateway total requests            | ✅          | Stat         | Traffic level                       |
-| API Gateway status breakdown          | ✅          | Bar Gauge    | Error monitoring                    |
-| API Gateway latency P95               | ✅          | Heatmap      | Performance under load              |
+| API Gateway status breakdown          | ✅          | Time Series  | Error monitoring                    |
+| API Gateway latency histogram         | ✅          | Heatmap      | Performance under load              |
 | Table of targets with success/failure | ➖ (via API) | Table/Stat   | Drilldown per target (stretch goal) |
 | Alerts (e.g., ping failures)          | ✅          | Alert config | Early warning system                |
 
-### Apply the Dashboard in Grafana
+Apply the dashboard:
 1) Port-forward Grafana:
-
 ```
 kubectl port-forward deployment/grafana 3000:3000
 ```
-
 2) Open Grafana and login:
 - URL: `http://localhost:3000`
 - Default credentials: `admin` / `admin` (Grafana will prompt to change)
-
 3) Add Prometheus as a data source:
 - Connections → Data sources → Add data source → Prometheus
 - URL: `http://prometheus:9090`
 - Save & Test
-
 4) Import the dashboard JSON:
 - Dashboards → New → Import
 - Upload `monitoring/grafana-dashboard.json`
 - Select the Prometheus data source
 - Import
 
-## Screenshots (Placeholders)
+## Screenshots (placeholders)
 Add screenshots here later:
 - Architecture diagram
 - Grafana dashboard
 - Prometheus targets page
 
-## Persistence Notes
-Prometheus and Grafana are now configured with PVCs so data and dashboards survive restarts.
+## Persistence notes
+Prometheus and Grafana are configured with PVCs so data and dashboards survive restarts.  
 If you redeploy the Pods, your metrics history and Grafana settings should remain.
 
-## Troubleshooting Notes
-This section captures the main issues we hit while running the ping-agent and how we resolved them.
-
+## Troubleshooting notes
 ### Goal
 Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:8080/metrics`, and verify it with `curl`.
 
-### Problems Observed
+### Problems observed
 - Docker couldn't connect to the daemon (Docker Desktop not running or shell pointed at Minikube's daemon).
 - `ErrImageNeverPull` in Kubernetes (image not available inside Minikube).
 - `kubectl apply` failed from the wrong working directory (`k8s/` path not found).
@@ -339,13 +334,13 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Use `strategy: Recreate` for Prometheus/Grafana when using PVCs, then delete old pods so only one holds the lock.
 - Apply only Kubernetes manifests (`k8s/` and specific `monitoring/*.yaml`) and keep `monitoring/*.json` for Grafana import.
 
-### Verification Steps
+### Verification steps
 - `kubectl logs -l app=ping-agent --tail=20` shows ping logs and metrics server start line.
 - `kubectl port-forward deploy/ping-agent 18080:8080`
 - `curl -v http://localhost:18080/metrics` returns `HTTP/1.1 200 OK` and metric output.
 
-## Full Test Run (From Scratch)
-This is a complete, copy-paste path to rebuild and validate everything.
+## Full test run (from scratch)
+This is a complete, copy‑paste path to rebuild and validate everything.
 
 ### 1) Build images inside Minikube
 ```
