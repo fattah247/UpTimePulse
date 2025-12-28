@@ -28,8 +28,8 @@ var (
 	)
 	pingLatency = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name: "ping_latency_seconds",
-			Help: "Latency of HTTP pings in seconds",
+			Name:    "ping_latency_seconds",
+			Help:    "Latency of HTTP pings in seconds",
 			Buckets: prometheus.DefBuckets,
 		},
 		[]string{"target"},
