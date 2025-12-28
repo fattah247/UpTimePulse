@@ -31,7 +31,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "ping_success_total",
+          "expr": "sum(ping_success_total)",
           "refId": "A"
         }
       ],
@@ -60,7 +60,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "ping_failure_total",
+          "expr": "sum(ping_failure_total)",
           "refId": "A"
         }
       ],
@@ -89,7 +89,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "100 * (ping_success_total / (ping_success_total + ping_failure_total))",
+          "expr": "100 * (sum(ping_success_total) / (sum(ping_success_total) + sum(ping_failure_total)))",
           "refId": "A"
         }
       ],
@@ -127,11 +127,11 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "rate(ping_success_total[1m])",
+          "expr": "sum(rate(ping_success_total[1m]))",
           "refId": "A"
         },
         {
-          "expr": "rate(ping_failure_total[1m])",
+          "expr": "sum(rate(ping_failure_total[1m]))",
           "refId": "B"
         }
       ],
@@ -188,7 +188,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "rate(ping_latency_seconds_bucket[1m])",
+          "expr": "sum(rate(ping_latency_seconds_bucket[1m])) by (le)",
           "refId": "A"
         }
       ],
@@ -207,7 +207,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "rate(ping_latency_seconds_sum[1m]) / rate(ping_latency_seconds_count[1m])",
+          "expr": "sum(rate(ping_latency_seconds_sum[1m])) / sum(rate(ping_latency_seconds_count[1m]))",
           "refId": "A"
         }
       ],
@@ -218,6 +218,44 @@
         "overrides": []
       },
       "gridPos": { "x": 6, "y": 16, "w": 6, "h": 6 }
+    },
+    {
+      "type": "timeseries",
+      "title": "API Request Count (rate by path)",
+      "id": 11,
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum by (path) (rate(api_gateway_requests_total[1m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "x": 0, "y": 22, "w": 8, "h": 6 }
+    },
+    {
+      "type": "stat",
+      "title": "Availability % (per target)",
+      "id": 12,
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "100 * ping_success_total / (ping_success_total + ping_failure_total)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "x": 8, "y": 22, "w": 4, "h": 6 }
     }
   ],
   "templating": { "list": [] }
