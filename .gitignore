@@ -1,0 +1,8 @@
+# Secrets
+k8s/alertmanager-secret.yaml
+*.env
+.env
+
+# OS/editor
+.DS_Store
+*.swp
