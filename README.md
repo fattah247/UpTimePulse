@@ -5,18 +5,30 @@ Starter project for a simple uptime monitoring platform.
 ## Architecture overview
 Here’s the quick mental model:
 
-`ping-agent` pings a URL and exposes `/metrics`. Prometheus scrapes it (and `api-gateway`), stores time‑series data, and Grafana draws the graphs. The `api-gateway` reads ping‑agent metrics and exposes JSON summaries so a client doesn’t have to read raw Prometheus text.
+`ping-agent` pings a URL and exposes `/metrics`. Prometheus scrapes it (and `api-gateway`), stores time‑series data, and Grafana draws the graphs. The `api-gateway` reads ping‑agent metrics and exposes JSON summaries so a client doesn’t have to read raw Prometheus text. Alerts go through Alertmanager and land in a tiny logger service for now.
 
 Data path: `ping-agent` → `Prometheus` → `Grafana`  
 API path: `client` → `api-gateway` → `ping-agent` metrics
 
+```mermaid
+flowchart LR
+  client[Client] --> api[api-gateway]
+  api --> metrics[ping-agent /metrics]
+  ping[ping-agent] --> metrics
+  prom[Prometheus] --> grafana[Grafana]
+  prom -->|scrape| metrics
+  alert[Alertmanager] --> logger[alert-logger]
+  prom -->|alerts| alert
+```
+
 ## Project layout
 - `services/` contains the application services (ping-agent, api-gateway, dashboard-ui).
 - `k8s/` contains Kubernetes manifests used to run everything in a cluster.
-- `ci-cd/` contains CI/CD pipeline configuration (automated build/test/deploy).
+- `ci-cd/` contains legacy CI/CD pipeline configuration (kept for reference).
+- `.github/workflows/` is the active CI workflow location.
 - `monitoring/` contains Prometheus (metrics collection) and Grafana (dashboards).
 - `terraform/` contains infrastructure as code to provision cloud resources.
-- `docs/` contains documentation and diagrams.
+- `docs/` removed (the root `README.md` is the single source of truth).
 
 ## Quickstart (local Docker)
 Run ping‑agent locally:
@@ -83,7 +95,7 @@ What each command means:
 Endpoints from `api-gateway`:
 
 - `GET /healthz` → simple healthcheck.
-- `GET /targets` → list monitored URLs (currently just one).
+- `GET /targets` → list monitored URLs (from `PING_TARGET_URLS`).
 - `GET /uptime-summary` → success/failure counts + availability %.
 - `GET /metrics` → Prometheus metrics for api‑gateway itself.
 
@@ -125,6 +137,7 @@ It’s the source of truth. It pings a URL, then exposes:
 - counters (`ping_success_total`, `ping_failure_total`)
 - histogram (`ping_latency_seconds`)
 - `/metrics` for scraping
+- targets come from `PING_TARGET_URLS` (comma‑separated)
 
 Without this, there’s nothing to observe.
 
@@ -201,6 +214,20 @@ Exposes ping-agent inside the cluster so Prometheus can scrape it.
 - `selector`: matches pods labeled `app: ping-agent`.
 - `port`/`targetPort`: forwards 8080 to the pod.
 
+### `k8s/api-gateway-deployment.yaml`
+Runs the FastAPI gateway.
+
+- `containerPort: 8080` matches the `uvicorn` port.
+- `env.PING_AGENT_METRICS_URL` points at `http://ping-agent:8080/metrics`.
+- `env.PING_TARGET_URLS` mirrors the target list used by ping-agent.
+- `livenessProbe`/`readinessProbe` hit `/healthz`.
+- Prometheus scrape annotations enable `/metrics` scraping.
+
+### `k8s/api-gateway-service.yaml`
+Service fronting the API gateway.
+
+- Used for port‑forward and Prometheus scraping (`api-gateway:8080`).
+
 ### `k8s/prometheus-configmap.yaml`
 Holds Prometheus configuration.
 
@@ -229,6 +256,57 @@ Persists Prometheus time-series data across restarts.
 
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
 - `storage: 5Gi`: size of the requested volume.
+
+### `k8s/alert-rules-configmap.yaml`
+Prometheus alert rules.
+
+- `alert: TargetDown` fires when `ping_failure_total` spikes.
+- `expr: increase(ping_failure_total[1m]) > 2`
+- `for: 1m` keeps it from flapping on a single miss.
+
+### `k8s/alertmanager-configmap.yaml`
+Alertmanager routing config.
+
+- Routes all alerts to a webhook receiver called `stdout`.
+- That receiver points to `alert-logger` for now.
+- SMTP settings are read from `alertmanager-smtp` via env vars.
+
+### `k8s/alertmanager-deployment.yaml`
+Runs Alertmanager.
+
+- Exposes port `9093`.
+- Uses the config from `alertmanager-config`.
+- Loads SMTP credentials from the Secret.
+
+### `k8s/alertmanager-service.yaml`
+Cluster service for Alertmanager.
+
+- Used by Prometheus `alertmanagers` config.
+
+### `k8s/alert-logger-deployment.yaml`
+Tiny HTTP echo service to print alert payloads to stdout.
+
+- Placeholder for Slack/email later.
+
+### `k8s/alert-logger-service.yaml`
+Cluster service for `alert-logger`.
+
+### `k8s/alertmanager-secret.yaml`
+SMTP credentials for Alertmanager email.
+
+- Replace the placeholder values before applying.
+
+### `.github/workflows/ci.yml`
+Single CI pipeline for Go + Python + Docker builds.
+
+- Go: `gofmt`, `go vet`, `go test`.
+- Python: `py_compile`, `unittest`.
+- Docker: builds images for `ping-agent` and `api-gateway`.
+
+### `.gitignore`
+Keeps secrets and local files out of git.
+
+- `k8s/alertmanager-secret.yaml` is ignored on purpose.
 
 ### `monitoring/grafana-deployment.yaml`
 Runs Grafana.
@@ -301,9 +379,10 @@ kubectl port-forward deployment/grafana 3000:3000
 
 ## Screenshots (placeholders)
 Add screenshots here later:
-- Architecture diagram
-- Grafana dashboard
-- Prometheus targets page
+- Architecture diagram (simple box/arrow flow).
+- Grafana dashboard with uptime + API panels visible.
+- Prometheus Targets page (`/targets`) showing ping-agent and api-gateway as UP.
+- API Gateway `/uptime-summary` response in terminal (curl output).
 
 ## Persistence notes
 Prometheus and Grafana are configured with PVCs so data and dashboards survive restarts.  
@@ -319,9 +398,11 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - `kubectl apply` failed from the wrong working directory (`k8s/` path not found).
 - `kubectl apply` failed with OpenAPI errors (cluster not running or context stale).
 - Port-forward to `:8080` returned `connection refused` (pod was running an old image without the metrics server).
+- `/uptime-summary` returned `0%` availability even though `/metrics` showed success counts.
 - Go build errors (missing `go.sum`, Go version mismatch, syntax errors in `main.go`).
 - Prometheus/Grafana rollouts stuck due to PVC lock during rolling updates.
 - Applying `monitoring/` failed because it contains non-Kubernetes files.
+- Alerts not visible: check `alert-logger` pod logs.
 
 ### Resolutions
 - Start Docker Desktop; reset Docker env with `eval $(minikube docker-env -u)` when needed.
@@ -329,10 +410,13 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Use repo root for `kubectl apply -f k8s/...`.
 - Start Minikube and select the right context (`minikube start`, `kubectl config use-context minikube`).
 - Rebuild and restart the deployment to pick up the new binary (`kubectl rollout restart deployment ping-agent`).
+- The metrics parser in `services/api-gateway/main.py` was too strict (expected unlabeled counters). Fix by reading label values like `target="..."` and summing `ping_success_total{target="..."}` and `ping_failure_total{target="..."}` per target.
 - Update Dockerfile to include `go.sum` and use the correct Go version.
 - Fix `main.go` typos and ensure `http.ListenAndServe(":8080", nil)` is running.
 - Use `strategy: Recreate` for Prometheus/Grafana when using PVCs, then delete old pods so only one holds the lock.
 - Apply only Kubernetes manifests (`k8s/` and specific `monitoring/*.yaml`) and keep `monitoring/*.json` for Grafana import.
+- For alerts, check `kubectl logs deploy/alert-logger` to see raw payloads.
+- If Grafana rollouts keep hanging, set `strategy: Recreate` in `monitoring/grafana-deployment.yaml`.
 
 ### Verification steps
 - `kubectl logs -l app=ping-agent --tail=20` shows ping logs and metrics server start line.
@@ -356,6 +440,12 @@ kubectl apply -f k8s/
 kubectl apply -f monitoring/grafana-deployment.yaml
 kubectl apply -f monitoring/grafana-service.yaml
 kubectl apply -f monitoring/grafana-pvc.yaml
+```
+
+Alertmanager email requires the Secret:
+```
+kubectl apply -f k8s/alertmanager-secret.yaml
+kubectl rollout restart deployment alertmanager
 ```
 
 ### 3) Restart deployments and wait for readiness
