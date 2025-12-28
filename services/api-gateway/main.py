@@ -12,7 +12,11 @@ app = FastAPI()
 PING_AGENT_METRICS_URL = os.getenv(
     "PING_AGENT_METRICS_URL", "http://ping-agent:8080/metrics"
 )
-MONITORED_TARGETS = [os.getenv("PING_TARGET_URL", "https://google.com")]
+targets_env = os.getenv("PING_TARGET_URLS", "").strip()
+if targets_env:
+    MONITORED_TARGETS = [t.strip() for t in targets_env.split(",") if t.strip()]
+else:
+    MONITORED_TARGETS = [os.getenv("PING_TARGET_URL", "https://google.com")]
 
 REQUEST_COUNT = Counter(
     "api_gateway_requests_total",
@@ -62,12 +66,25 @@ def targets() -> dict[str, list[dict[str, str]]]:
     return {"targets": [{"url": url} for url in MONITORED_TARGETS]}
 
 
-def _parse_counter(metrics_text: str, metric_name: str) -> float:
-    pattern = rf"^{re.escape(metric_name)}\\s+([0-9.eE+-]+)$"
-    match = re.search(pattern, metrics_text, flags=re.MULTILINE)
-    if not match:
-        return 0.0
-    return float(match.group(1))
+def _parse_counter_by_target(metrics_text: str, metric_name: str) -> dict[str, float]:
+    results: dict[str, float] = {}
+    for line in metrics_text.splitlines():
+        if not line.startswith(metric_name):
+            continue
+        if "{" not in line or "}" not in line:
+            continue
+        labels_part, value_part = line.split("}", 1)
+        labels_part = labels_part.split("{", 1)[-1]
+        match = re.search(r'target="([^"]+)"', labels_part)
+        if not match:
+            continue
+        target = match.group(1)
+        value = value_part.strip()
+        try:
+            results[target] = float(value)
+        except ValueError:
+            continue
+    return results
 
 
 @app.get("/uptime-summary")
@@ -79,21 +96,25 @@ def uptime_summary() -> dict[str, list[dict[str, str | float]]]:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     metrics_text = response.text
-    success = _parse_counter(metrics_text, "ping_success_total")
-    failures = _parse_counter(metrics_text, "ping_failure_total")
-    total = success + failures
-    availability = (success / total) * 100 if total > 0 else 0.0
+    success_by_target = _parse_counter_by_target(metrics_text, "ping_success_total")
+    failures_by_target = _parse_counter_by_target(metrics_text, "ping_failure_total")
 
-    return {
-        "targets": [
+    results = []
+    for target in MONITORED_TARGETS:
+        success = success_by_target.get(target, 0.0)
+        failures = failures_by_target.get(target, 0.0)
+        total = success + failures
+        availability = (success / total) * 100 if total > 0 else 0.0
+        results.append(
             {
-                "url": MONITORED_TARGETS[0],
+                "url": target,
                 "success": success,
                 "failures": failures,
                 "availability": f"{availability:.0f}%",
             }
-        ]
-    }
+        )
+
+    return {"targets": results}
 
 
 @app.get("/health")

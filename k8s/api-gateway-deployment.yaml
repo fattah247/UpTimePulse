@@ -27,3 +27,17 @@ spec:
               value: "http://ping-agent:8080/metrics"
             - name: PING_TARGET_URL
               value: "https://google.com"
+            - name: PING_TARGET_URLS
+              value: "https://google.com,https://github.com"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
