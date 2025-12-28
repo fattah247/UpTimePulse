@@ -1,6 +1,28 @@
 # UptimePulse
 
-Starter project for a simple uptime monitoring platform.
+![Kubernetes](https://img.shields.io/badge/Kubernetes-1.29-blue)
+![Prometheus](https://img.shields.io/badge/Prometheus-2.48-orange)
+![Grafana](https://img.shields.io/badge/Grafana-10.3-informational)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green)
+
+Lightweight uptime + latency stack for learning Kubernetes, Prometheus, and real‑world SRE workflows — no cloud lock‑in, no managed magic.
+
+## Table of Contents
+
+- [Architecture overview](#architecture-overview)
+- [Project layout](#project-layout)
+- [Quickstart (local Docker)](#quickstart-local-docker)
+- [Quickstart (Minikube)](#quickstart-minikube)
+- [API Gateway Quickstart](#api-gateway-fastapi-quickstart)
+- [API Endpoints](#api-endpoints-what-they-actually-do)
+- [Command Notes](#command-notes)
+- [Flag Cheat Sheet](#flag-cheat-sheet)
+- [Why These Pieces Exist](#why-these-pieces-exist)
+- [Metrics Cheat Sheet](#metrics-cheat-sheet)
+- [Grafana Dashboard](#grafana-dashboard-what-it-shows-and-how-to-wire-it-up)
+- [Troubleshooting](#troubleshooting-notes)
+- [Rebuild From Scratch](#rebuild-everything-from-scratch)
+- [What I Learned](#what-i-learned-and-why-this-exists)
 
 ## Architecture overview
 Here’s the quick mental model:
@@ -80,7 +102,7 @@ Test it:
 curl -v http://localhost:8080/healthz
 ```
 
-Note: `api-gateway` uses `imagePullPolicy: IfNotPresent`. Build inside Minikube or it won’t find the image.
+Note: `api-gateway` uses `imagePullPolicy: IfNotPresent`. Build inside Minikube or it won’t find the image. (Ask me how I know.)
 
 What each command means:
 - `eval $(minikube -p minikube docker-env)` points Docker at Minikube's Docker daemon.
@@ -91,7 +113,7 @@ What each command means:
 - `kubectl rollout status deployment api-gateway` waits for the Deployment to become ready.
 - `kubectl port-forward svc/api-gateway 8080:8080` tunnels local port `8080` to the Service.
 
-## What the API does
+## API Endpoints (What They Actually Do)
 Endpoints from `api-gateway`:
 
 - `GET /healthz` → simple healthcheck.
@@ -133,7 +155,7 @@ Common flags used in this project:
 
 ## Why these pieces exist
 ### Metrics producer (ping-agent)
-It’s the source of truth. It pings a URL, then exposes:
+This is the heart of the system. If this isn’t running, everything else is just watching silence. It pings a URL, then exposes:
 - counters (`ping_success_total`, `ping_failure_total`)
 - histogram (`ping_latency_seconds`)
 - `/metrics` for scraping
@@ -171,13 +193,13 @@ Automated snapshot (script):
 - `ping_latency_seconds` (histogram) → Heatmap/Histogram panel
 - `rate(ping_latency_seconds_sum[1m]) / rate(ping_latency_seconds_count[1m])` (avg latency) → Line graph
 
-## Go files (go.mod and go.sum)
+## Why Go Needs `go.mod` and `go.sum`
 These are standard Go module files.
 
 - `go.mod` declares the module name, the Go version, and direct dependencies.
 - `go.sum` records exact checksums so builds are reproducible.
 
-No `go.sum`, no reliable build. Docker builds will fail.
+If `go.sum` is missing, Docker builds will break — guaranteed.
 
 ## What you’ve learned so far
 Concrete skills you now have:
@@ -195,7 +217,7 @@ Short version:
 
 The Service gives `ping-agent` a stable DNS name, Prometheus scrapes it, and Grafana reads Prometheus. The `api-gateway` sits alongside to expose a human‑friendly JSON API.
 
-## YAML files explained
+## What Each YAML File Is Doing (and Why)
 ### `k8s/ping-agent-deployment.yaml`
 Runs the ping-agent container.
 
@@ -327,7 +349,7 @@ Persists Grafana dashboards and user settings across restarts.
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
 - `storage: 5Gi`: size of the requested volume.
 
-## Grafana dashboard (how it works + how to apply)
+## Grafana Dashboard: What It Shows, and How to Wire It Up
 Grafana dashboards are JSON documents. We keep one at `monitoring/grafana-dashboard.json`.
 
 Key fields inside the JSON:
@@ -414,6 +436,7 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Update Dockerfile to include `go.sum` and use the correct Go version.
 - Fix `main.go` typos and ensure `http.ListenAndServe(":8080", nil)` is running.
 - Use `strategy: Recreate` for Prometheus/Grafana when using PVCs, then delete old pods so only one holds the lock.
+- Grafana panels may go blank briefly during Prometheus rollouts. Give it ~30s.
 - Apply only Kubernetes manifests (`k8s/` and specific `monitoring/*.yaml`) and keep `monitoring/*.json` for Grafana import.
 - For alerts, check `kubectl logs deploy/alert-logger` to see raw payloads.
 - If Grafana rollouts keep hanging, set `strategy: Recreate` in `monitoring/grafana-deployment.yaml`.
@@ -423,7 +446,7 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - `kubectl port-forward deploy/ping-agent 18080:8080`
 - `curl -v http://localhost:18080/metrics` returns `HTTP/1.1 200 OK` and metric output.
 
-## Full test run (from scratch)
+## Rebuild Everything From Scratch
 This is a complete, copy‑paste path to rebuild and validate everything.
 
 ### 1) Build images inside Minikube
@@ -480,3 +503,27 @@ curl -v http://localhost:8080/uptime-summary
 - Open `http://localhost:3000`
 - Add Prometheus data source: `http://prometheus:9090`
 - Import `monitoring/grafana-dashboard.json`
+
+## Quick sanity checks
+- Prometheus targets are UP: `http://localhost:9090/targets`
+- Alert rule exists: `http://localhost:9090/rules` (look for `TargetDown`)
+- Alertmanager is reachable: `http://localhost:9093/#/alerts`
+- Alert output shows in logger: `kubectl logs deploy/alert-logger --tail=50`
+- API works:
+  - `curl -v http://localhost:8080/healthz`
+  - `curl -v http://localhost:8080/uptime-summary`
+- Ping metrics are exposed: `curl -v http://localhost:18080/metrics`
+- PVCs are bound: `kubectl get pvc`
+
+### Trigger an alert (quick test)
+1) Set a bad target in `k8s/ping-agent-deployment.yaml` (e.g., `https://example.invalid`).
+2) Apply and wait:
+```
+kubectl apply -f k8s/ping-agent-deployment.yaml
+```
+3) Wait 1–2 minutes, then check:
+- `http://localhost:9090/alerts`
+- `kubectl logs deploy/alert-logger --tail=50`
+
+## What I Learned (and Why This Exists)
+I built this as a fast, messy crash course in the stuff you only learn once it breaks: container builds inside Minikube, Prometheus scraping, Grafana dashboards, and *why rollouts + PVCs can be a pain*. It’s a real‑ish SRE toy stack, not a polished product. I’m keeping it around because it makes failure modes visible and repeatable.
