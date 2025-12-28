@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "services/ping-agent/**"
+      - "services/api-gateway/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "services/ping-agent/**"
+      - "services/api-gateway/**"
+      - ".github/workflows/**"
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+      - name: Go fmt
+        run: |
+          cd services/ping-agent
+          test -z "$(gofmt -l .)"
+      - name: Go vet
+        run: |
+          cd services/ping-agent
+          go vet ./...
+      - name: Go tests
+        run: |
+          cd services/ping-agent
+          go test ./...
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r services/api-gateway/requirements.txt
+      - name: Python lint
+        run: |
+          python -m py_compile services/api-gateway/main.py
+      - name: Python tests
+        run: |
+          python -m unittest discover -s services/api-gateway -p "test*.py"
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build ping-agent image
+        run: docker build -t ping-agent:ci services/ping-agent
+      - name: Build api-gateway image
+        run: docker build -t api-gateway:ci services/api-gateway
