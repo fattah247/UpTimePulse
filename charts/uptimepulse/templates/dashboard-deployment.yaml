@@ -1,0 +1,25 @@
+# Placeholder deployment for dashboard-ui
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "uptimepulse.fullname" . }}-dashboard-ui
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: dashboard-ui
+  template:
+    metadata:
+      labels:
+        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: dashboard-ui
+    spec:
+      containers:
+        - name: dashboard-ui
+          image: {{ .Values.image.dashboardUi | quote }}
+          ports:
+            - containerPort: 80

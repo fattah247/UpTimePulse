@@ -1,0 +1,44 @@
+nameOverride: ""
+fullnameOverride: ""
+
+pingTargets:
+  - https://google.com
+  - https://github.com
+
+image:
+  pingAgent: ping-agent:latest
+  apiGateway: api-gateway:latest
+  dashboardUi: dashboard-ui:latest
+  prometheus: prom/prometheus:v2.54.1
+  grafana: grafana/grafana:latest
+  alertmanager: prom/alertmanager:v0.27.0
+  alertLogger: mendhak/http-https-echo:36
+
+service:
+  apiGatewayPort: 80
+  apiGatewayTargetPort: 8080
+  pingAgentPort: 8080
+  prometheusPort: 9090
+  grafanaPort: 3000
+  alertmanagerPort: 9093
+  alertLoggerPort: 8080
+
+prometheus:
+  retention: 14d
+  pvcSize: 5Gi
+
+grafana:
+  pvcSize: 5Gi
+
+alert:
+  smtp:
+    smarthost: smtp.gmail.com:587
+    from: alerts@example.com
+    user: example@gmail.com
+    password: REPLACE_ME_APP_PASSWORD
+    to: myalerts@gmail.com
+  slackWebhook: ""
+
+ingress:
+  enabled: false
+  host: uptimpulse.local

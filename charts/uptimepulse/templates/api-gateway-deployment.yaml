@@ -1,16 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-gateway
+  name: {{ include "uptimepulse.fullname" . }}-api-gateway
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api-gateway
+      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api-gateway
   template:
     metadata:
       labels:
-        app: api-gateway
+        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api-gateway
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
@@ -18,17 +23,17 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: api-gateway:latest
+          image: {{ .Values.image.apiGateway | quote }}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           env:
             - name: PING_AGENT_METRICS_URL
-              value: "http://ping-agent:8080/metrics"
+              value: "http://{{ include \"uptimepulse.fullname\" . }}-ping-agent:8080/metrics"
             - name: PING_TARGET_URL
-              value: "https://google.com"
+              value: "{{ index .Values.pingTargets 0 }}"
             - name: PING_TARGET_URLS
-              value: "https://google.com,https://github.com"
+              value: "{{ join \",\" .Values.pingTargets }}"
           livenessProbe:
             httpGet:
               path: /healthz

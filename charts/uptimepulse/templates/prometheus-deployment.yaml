@@ -1,26 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prometheus
+  name: {{ include "uptimepulse.fullname" . }}-prometheus
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
 spec:
   strategy:
     type: Recreate
   replicas: 1
   selector:
     matchLabels:
-      app: prometheus
+      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: prometheus
   template:
     metadata:
       labels:
-        app: prometheus
+        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: prometheus
     spec:
       containers:
         - name: prometheus
-          image: prom/prometheus:v2.54.1
+          image: {{ .Values.image.prometheus | quote }}
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus"
-            - "--storage.tsdb.retention.time=14d"
+            - "--storage.tsdb.retention.time={{ .Values.prometheus.retention }}"
           ports:
             - containerPort: 9090
           volumeMounts:
@@ -33,10 +38,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: prometheus-config
+            name: {{ include "uptimepulse.fullname" . }}-prometheus-config
         - name: data
           persistentVolumeClaim:
-            claimName: prometheus-data
+            claimName: {{ include "uptimepulse.fullname" . }}-prometheus-data
         - name: rules
           configMap:
-            name: prometheus-alert-rules
+            name: {{ include "uptimepulse.fullname" . }}-prometheus-alert-rules

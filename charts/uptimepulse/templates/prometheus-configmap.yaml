@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "uptimepulse.fullname" . }}-prometheus-config
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    rule_files:
+      - /etc/prometheus/rules/alert.rules.yml
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: ["{{ include \"uptimepulse.fullname\" . }}-alertmanager:9093"]
+
+    scrape_configs:
+      - job_name: "api-gateway"
+        static_configs:
+          - targets: ["{{ include \"uptimepulse.fullname\" . }}-api-gateway:{{ .Values.service.apiGatewayPort }}"]
+      - job_name: "ping-agent"
+        static_configs:
+          - targets: ["{{ include \"uptimepulse.fullname\" . }}-ping-agent:{{ .Values.service.pingAgentPort }}"]

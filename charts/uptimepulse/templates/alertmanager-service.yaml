@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "uptimepulse.fullname" . }}-alertmanager
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+spec:
+  selector:
+    {{- include "uptimepulse.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+  ports:
+    - name: http
+      port: {{ .Values.service.alertmanagerPort }}
+      targetPort: 9093

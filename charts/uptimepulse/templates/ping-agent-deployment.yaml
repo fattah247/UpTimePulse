@@ -1,26 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ping-agent
+  name: {{ include "uptimepulse.fullname" . }}-ping-agent
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ping-agent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ping-agent
+      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ping-agent
   template:
     metadata:
       labels:
-        app: ping-agent
+        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: ping-agent
     spec:
       containers:
       - name: ping-agent
-        image: ping-agent:latest
+        image: {{ .Values.image.pingAgent | quote }}
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
         env:
           - name: PING_TARGET_URLS
-            value: "https://google.com,https://github.com"
+            value: "{{ join \",\" .Values.pingTargets }}"
         livenessProbe:
           httpGet:
             path: /healthz

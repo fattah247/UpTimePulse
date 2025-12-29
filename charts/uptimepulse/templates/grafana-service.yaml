@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "uptimepulse.fullname" . }}-grafana
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  selector:
+    {{- include "uptimepulse.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.grafanaPort }}
+      targetPort: 3000
+  type: ClusterIP

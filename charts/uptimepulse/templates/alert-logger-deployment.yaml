@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "uptimepulse.fullname" . }}-alert-logger
+  labels:
+    {{- include "uptimepulse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alert-logger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: alert-logger
+  template:
+    metadata:
+      labels:
+        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: alert-logger
+    spec:
+      containers:
+        - name: alert-logger
+          image: {{ .Values.image.alertLogger | quote }}
+          env:
+            - name: LOG_WITHOUT_NEWLINE
+              value: "true"
+          ports:
+            - containerPort: 8080
