@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "charts/uptimepulse/templates/*.yaml": "helm",
+    "charts/uptimepulse/templates/*.yml": "helm"
+  }
+}
