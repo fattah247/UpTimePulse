@@ -33,17 +33,17 @@ Helm renders the chart; `ping-agent` reads its target list from a ConfigMap (`/c
 Data path: `ping-agent` → `Prometheus` → `Grafana`  
 API path: `client` → `api-gateway` → `ping-agent` metrics
 
-Full diagrams and a template-to-resource map live in `ARCHITECTURE.md`.
+This diagram is the deployment flow (Helm → YAML → cluster → pods). Runtime data flow and the template map live in `ARCHITECTURE.md`.
 
 ```mermaid
 flowchart TB
-  linkStyle default stroke-width:2px
-  classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:2px
-  classDef deploy fill:#ddd6fe,stroke:#7c3aed,stroke-width:2px
-  classDef config fill:#e0f2fe,stroke:#0284c7,stroke-width:2px
-  classDef service fill:#dcfce7,stroke:#16a34a,stroke-width:2px
-  classDef monitoring fill:#fef3c7,stroke:#d97706,stroke-width:2px
-  classDef alerting fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+  linkStyle default stroke:#475569,stroke-width:2px
+  classDef group fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
+  classDef deploy fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#0f172a
+  classDef config fill:#e0f2fe,stroke:#0369a1,stroke-width:2px,color:#0f172a
+  classDef service fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#0f172a
+  classDef monitoring fill:#fef9c3,stroke:#b45309,stroke-width:2px,color:#0f172a
+  classDef alerting fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#0f172a
 
   subgraph Deploy["Deployment Flow"]
     helm[Helm chart<br/>templates + values]

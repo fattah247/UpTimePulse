@@ -3,15 +3,16 @@
 This doc complements `README.md` with diagrams and a file-by-file map of the Helm chart. For quickstart/commands and service details, jump to [README.md](README.md). This doc is the architecture/map view.
 
 ## High-level flow (mermaid)
+Runtime data/control flow. The Helm/deployment flow is shown in `README.md`.
 
 ```mermaid
 flowchart LR
-  linkStyle default stroke-width:1px
-  classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:1px
-  classDef apiFlow stroke:#2563eb,stroke-width:2px
+  linkStyle default stroke:#475569,stroke-width:2px
+  classDef group fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
+  classDef apiFlow stroke:#1d4ed8,stroke-width:2px
   classDef monitoringFlow stroke:#dc2626,stroke-width:2px
-  classDef alertFlow stroke:#ea580c,stroke-width:2px
-  classDef vizFlow stroke:#7c3aed,stroke-width:2px
+  classDef alertFlow stroke:#c2410c,stroke-width:2px
+  classDef vizFlow stroke:#6d28d9,stroke-width:2px
 
   subgraph Access["Access Layer (if ingress.enabled)"]
     client((Client))
@@ -98,13 +99,13 @@ Terms in **bold** here map to the Dictionary section below.
 
 ```mermaid
 flowchart TB
-  linkStyle default stroke-width:1px
-  classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:1px
-  classDef configFlow stroke:#16a34a,stroke-width:2px
+  linkStyle default stroke:#475569,stroke-width:2px
+  classDef group fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
+  classDef configFlow stroke:#15803d,stroke-width:2px
   classDef monitoringFlow stroke:#dc2626,stroke-width:2px
-  classDef alertFlow stroke:#ea580c,stroke-width:2px
-  classDef vizFlow stroke:#7c3aed,stroke-width:2px
-  classDef accessFlow stroke:#6b7280,stroke-width:2px
+  classDef alertFlow stroke:#c2410c,stroke-width:2px
+  classDef vizFlow stroke:#6d28d9,stroke-width:2px
+  classDef accessFlow stroke:#475569,stroke-width:2px
 
   subgraph Config["Config Layer"]
     targets[ping-targets-configmap<br/>Target URLs]
