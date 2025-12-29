@@ -28,7 +28,7 @@ Lightweight uptime + latency stack for learning Kubernetes, Prometheus, and real
 ## Architecture overview
 Here’s the quick mental model:
 
-`ping-agent` pings a URL and exposes `/metrics`. Prometheus scrapes it (and `api-gateway`), stores time‑series data, and Grafana draws the graphs. The `api-gateway` reads ping‑agent metrics and exposes JSON summaries so a client doesn’t have to read raw Prometheus text. Alerts go through Alertmanager and land in a tiny logger service for now.
+Helm renders the chart; `ping-agent` reads its target list from a ConfigMap (`/config/targets.json`), pings those URLs, and exposes `/metrics`. Prometheus scrapes it (and `api-gateway`), stores time‑series data, and Grafana draws the graphs. The `api-gateway` reads ping‑agent metrics and exposes JSON summaries so a client doesn’t have to read raw Prometheus text. Alerts go through Alertmanager and land in a tiny logger service for now.
 
 Data path: `ping-agent` → `Prometheus` → `Grafana`  
 API path: `client` → `api-gateway` → `ping-agent` metrics
@@ -40,10 +40,11 @@ flowchart LR
   helm[Helm chart] --> k8s[Kubernetes resources]
   targets[ConfigMap targets.json] --> ping
   client[Client] --> api[api-gateway]
-  api --> metrics[ping-agent /metrics]
+  api -->|reads metrics| metrics[ping-agent /metrics]
   ping[ping-agent] --> metrics
   prom[Prometheus] --> grafana[Grafana]
   prom -->|scrape| metrics
+  prom -->|scrape| api
   alert[Alertmanager] --> logger[alert-logger]
   prom -->|alerts| alert
 ```
@@ -490,6 +491,23 @@ helm upgrade --install uptimepulse ./charts/uptimepulse \\
 Local override file (to make secrets stay out of git):
 ```
 helm upgrade --install uptimepulse ./charts/uptimepulse -f charts/uptimepulse/values.local.yaml
+```
+Note: `charts/uptimepulse/values.local.yaml` is git‑ignored on purpose.
+
+Feature toggles (values.yaml):
+```
+ingress:
+  enabled: true
+  host: uptimepulse.local
+
+hpa:
+  enabled: true
+```
+
+Helm sanity checks:
+```
+helm lint charts/uptimepulse
+helm template uptimepulse ./charts/uptimepulse | kubectl apply --dry-run=client -f -
 ```
 
 ### 3) Restart deployments and wait for readiness
