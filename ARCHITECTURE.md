@@ -8,32 +8,41 @@ This doc complements `README.md` with diagrams and a file-by-file map of the Hel
 flowchart LR
   linkStyle default stroke-width:1px
   classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:1px
-  subgraph Access["Access"]
+  classDef apiFlow stroke:#2563eb,stroke-width:2px
+  classDef monitoringFlow stroke:#dc2626,stroke-width:2px
+  classDef alertFlow stroke:#ea580c,stroke-width:2px
+  classDef vizFlow stroke:#7c3aed,stroke-width:2px
+
+  subgraph Access["Access Layer"]
     client((Client))
-    ingress[Ingress]
+    ingress[Ingress<br/>HTTP routing]
   end
 
-  subgraph Services["Services"]
-    apiSvc[api-gateway Service]
-    apiDep[api-gateway Deployment]
-    pingSvc[ping-agent Service]
-    pingDep[ping-agent Deployment]
+  subgraph Services["Service Layer"]
+    apiSvc[api-gateway Service<br/>REST API]
+    apiDep[api-gateway Deployment<br/>FastAPI server]
+    pingSvc[ping-agent Service<br/>Metrics endpoint]
+    pingDep[ping-agent Deployment<br/>Pings targets]
   end
 
-  subgraph Observability["Observability"]
-    prom[Prometheus]
-    grafana[Grafana]
-    am[Alertmanager]
-    logger[alert-logger]
+  subgraph Observability["Observability Layer"]
+    prom[Prometheus<br/>Metrics storage]
+    grafana[Grafana<br/>Dashboards]
+    am[Alertmanager<br/>Alert routing]
+    logger[alert-logger<br/>Alert logging]
   end
 
-  client --> ingress --> apiSvc --> apiDep
-  apiDep --> pingSvc --> pingDep
-  pingDep -->|/metrics| prom
-  prom --> grafana
-  prom -->|alerts| am --> logger
+  client -->|"HTTP request"| ingress -->|"routes to"| apiSvc -->|"serves"| apiDep
+  apiDep -->|"reads metrics"| pingSvc -->|"exposes"| pingDep
+  pingDep -->|"pings targets & exposes<br/>Prometheus metrics"| prom
+  prom -->|"visualizes data"| grafana
+  prom -->|"sends alerts"| am -->|"logs alerts"| logger
 
   class Access,Services,Observability group
+  linkStyle 0,1,2,3 apiFlow
+  linkStyle 4,5 monitoringFlow
+  linkStyle 6 vizFlow
+  linkStyle 7,8 alertFlow
 ```
 
 ## Component roles and their templates
@@ -90,69 +99,79 @@ Terms in **bold** here map to the Dictionary section below.
 flowchart TB
   linkStyle default stroke-width:1px
   classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:1px
-  subgraph Config["Config"]
-    targets[ping-targets-configmap]
-    promCfg[prometheus-configmap]
-    alertRules[alert-rules-configmap]
+  classDef configFlow stroke:#16a34a,stroke-width:2px
+  classDef monitoringFlow stroke:#dc2626,stroke-width:2px
+  classDef alertFlow stroke:#ea580c,stroke-width:2px
+  classDef vizFlow stroke:#7c3aed,stroke-width:2px
+  classDef accessFlow stroke:#6b7280,stroke-width:2px
+
+  subgraph Config["Config Layer"]
+    targets[ping-targets-configmap<br/>Target URLs]
+    promCfg[prometheus-configmap<br/>Scrape config]
+    alertRules[alert-rules-configmap<br/>Alert rules]
   end
 
-  subgraph Services["Services"]
-    pingDep[ping-agent Deployment]
-    pingSvc[ping-agent Service]
-    apiDep[api-gateway Deployment]
-    apiSvc[api-gateway Service]
-    dash[dashboard Deployment]
+  subgraph Services["Service Layer"]
+    pingDep[ping-agent Deployment<br/>Pings targets]
+    pingSvc[ping-agent Service<br/>Metrics endpoint]
+    apiDep[api-gateway Deployment<br/>REST API]
+    apiSvc[api-gateway Service<br/>API endpoint]
+    dash[dashboard Deployment<br/>Web UI]
   end
 
-  subgraph Metrics["Metrics"]
-    promDep[prometheus Deployment]
-    promSvc[prometheus Service]
-    promPVC[prometheus-pvc]
+  subgraph Metrics["Metrics Layer"]
+    promDep[prometheus Deployment<br/>Scrapes & stores]
+    promSvc[prometheus Service<br/>Query endpoint]
+    promPVC[prometheus-pvc<br/>Metrics storage]
   end
 
-  subgraph Alerting["Alerting"]
-    amDep[alertmanager Deployment]
-    amSvc[alertmanager Service]
-    amCfg[alertmanager-configmap]
-    amSecret[alertmanager-secret]
-    loggerDep[alert-logger Deployment]
-    loggerSvc[alert-logger Service]
+  subgraph Alerting["Alerting Layer"]
+    amDep[alertmanager Deployment<br/>Routes alerts]
+    amSvc[alertmanager Service<br/>Alert UI]
+    amCfg[alertmanager-configmap<br/>Routing config]
+    amSecret[alertmanager-secret<br/>SMTP creds]
+    loggerDep[alert-logger Deployment<br/>Logs alerts]
+    loggerSvc[alert-logger Service<br/>Logging endpoint]
   end
 
-  subgraph Visualization["Visualization"]
-    grafDep[grafana Deployment]
-    grafSvc[grafana Service]
-    grafPVC[grafana-pvc]
+  subgraph Visualization["Visualization Layer"]
+    grafDep[grafana Deployment<br/>Creates dashboards]
+    grafSvc[grafana Service<br/>Dashboard UI]
+    grafPVC[grafana-pvc<br/>Dashboard storage]
   end
 
-  subgraph Access["Access"]
-    ing[ingress]
+  subgraph Access["Access Layer"]
+    ing[ingress<br/>HTTP routing]
   end
 
-  targets --> pingDep
-  pingDep --> pingSvc --> promDep
-  promCfg --> promDep
-  alertRules --> promDep
-  promPVC --> promDep
-  promDep --> promSvc
-  promDep -->|alerts| amDep
-  amCfg --> amDep
-  amSecret --> amDep
-  amDep --> loggerDep
-  loggerDep --> loggerSvc
-  promDep --> grafDep
-  grafPVC --> grafDep
-  grafDep --> grafSvc
-  apiDep -->|reads metrics| pingSvc
-  apiDep --> promSvc
-  apiDep --> grafSvc
-  apiDep --> dash
-  apiDep --> apiSvc --> ing
+  targets -->|"provides targets"| pingDep
+  pingDep -->|"exposes metrics"| pingSvc -->|"scrapes /metrics"| promDep
+  promCfg -->|"configures scraping"| promDep
+  alertRules -->|"defines alerts"| promDep
+  promPVC -->|"stores metrics"| promDep
+  promDep -->|"query metrics"| promSvc
+  promDep -->|"sends alert"| amDep
+  amCfg -->|"routing rules"| amDep
+  amSecret -->|"email creds"| amDep
+  amDep -->|"webhook"| loggerDep
+  loggerDep -->|"logging API"| loggerSvc
+  promDep -->|"data source"| grafDep
+  grafPVC -->|"dashboards"| grafDep
+  grafDep -->|"dashboard UI"| grafSvc
+  apiDep -->|"reads metrics"| pingSvc
+  apiDep -->|"status checks"| promSvc
+  apiDep -->|"health checks"| grafSvc
+  apiDep -->|"integrates"| dash
+  apiDep -->|"API endpoint"| apiSvc -->|"routes traffic"| ing
 
-  promDep -->|scrapes| pingSvc
-  promDep -->|scrapes| apiSvc
+  promDep -->|"scrapes"| apiSvc
 
   class Config,Services,Metrics,Alerting,Visualization,Access group
+  linkStyle 0 configFlow
+  linkStyle 1,2,3,4 monitoringFlow
+  linkStyle 5,6,7,8,9 alertFlow
+  linkStyle 10,11 vizFlow
+  linkStyle 12,13,14,15,16,17 accessFlow
 ```
 
 ## Mini “how Helm renders templates” (quick reference)
