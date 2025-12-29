@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -41,16 +43,13 @@ func init() {
 }
 
 func main() {
-	targetsEnv := os.Getenv("PING_TARGET_URLS")
-	if targetsEnv == "" {
-		targetsEnv = "https://google.com"
-	}
 	var targets []string
-	for _, raw := range strings.Split(targetsEnv, ",") {
-		target := strings.TrimSpace(raw)
-		if target != "" {
-			targets = append(targets, target)
-		}
+	targets, err := loadTargets("/config/targets.json")
+	if err != nil || len(targets) == 0 {
+		targets = parseTargetsEnv(os.Getenv("PING_TARGET_URLS"))
+	}
+	if len(targets) == 0 {
+		targets = []string{"https://google.com"}
 	}
 
 	client := &http.Client{
@@ -86,4 +85,37 @@ func main() {
 	})
 	fmt.Println("Prometheus metrics available on :8080/metrics")
 	http.ListenAndServe(":8080", nil)
+}
+
+func loadTargets(path string) ([]string, error) {
+	data, err := os.ReadFile(filepath.Clean(path))
+	if err != nil {
+		return nil, err
+	}
+	var raw []string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+	var targets []string
+	for _, target := range raw {
+		target = strings.TrimSpace(target)
+		if target != "" {
+			targets = append(targets, target)
+		}
+	}
+	return targets, nil
+}
+
+func parseTargetsEnv(value string) []string {
+	if value == "" {
+		return nil
+	}
+	var targets []string
+	for _, raw := range strings.Split(value, ",") {
+		target := strings.TrimSpace(raw)
+		if target != "" {
+			targets = append(targets, target)
+		}
+	}
+	return targets
 }
