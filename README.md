@@ -156,6 +156,14 @@ Common flags used in this project:
 - `--rm` = remove container after exit (used by `docker run`)
 
 ## Why these pieces exist
+For term definitions (ConfigMap, PVC, HPA, Ingress, etc.), see `ARCHITECTURE.md#dictionary-terms-used-in-this-doc`.
+
+### Ingress (what it means)
+Ingress is the Kubernetes “front door” for HTTP. It maps a hostname/path to a Service (like `api-gateway`) so you can reach it without port‑forwarding. It only works if an Ingress controller (e.g., NGINX) is installed. In this chart, it’s off by default (`ingress.enabled: false`).
+
+### HPA (what it means)
+HPA = Horizontal Pod Autoscaler. It automatically scales the number of pod replicas based on metrics (usually CPU). In this chart, the HPA targets `api-gateway` and scales between 1–3 replicas when CPU goes high.
+
 ### Metrics producer (ping-agent)
 This is the heart of the system. If this isn’t running, everything else is just watching silence. It pings a URL, then exposes:
 - counters (`ping_success_total`, `ping_failure_total`)
@@ -170,7 +178,7 @@ Prometheus pulls `/metrics` every 15s and stores the history. That’s the diffe
 
 Retention/storage notes:
 - Retention is set to `14d` via `--storage.tsdb.retention.time=14d` in `charts/uptimepulse/templates/prometheus-deployment.yaml`.
-- PVC size is `5Gi` in `charts/uptimepulse/templates/prometheus-pvc.yaml`.
+- PVC (see Dictionary) size is `5Gi` in `charts/uptimepulse/templates/prometheus-pvc.yaml`.
 - Prometheus storage docs: [https://prometheus.io/docs/prometheus/latest/storage/](https://prometheus.io/docs/prometheus/latest/storage/)
 
 Sizing approach (practical):
@@ -220,6 +228,7 @@ Short version:
 The Service gives `ping-agent` a stable DNS name, Prometheus scrapes it, and Grafana reads Prometheus. The `api-gateway` sits alongside to expose a human‑friendly JSON API.
 
 ## What Each YAML File Is Doing (and Why)
+If a term is unclear (ConfigMap, PVC, Secret, etc.), jump to `ARCHITECTURE.md#dictionary-terms-used-in-this-doc`.
 ### `charts/uptimepulse/templates/ping-agent-deployment.yaml`
 Runs the ping-agent container.
 
@@ -257,14 +266,14 @@ Service fronting the API gateway.
 - Used for port‑forward and Prometheus scraping (`api-gateway:8080`).
 
 ### `charts/uptimepulse/templates/prometheus-configmap.yaml`
-Holds Prometheus configuration.
+Holds Prometheus configuration (ConfigMap; see Dictionary).
 
 - `kind: ConfigMap`: stores `prometheus.yml` as data.
 - `scrape_interval`: how often Prometheus scrapes.
 - `scrape_configs`: targets to scrape (`ping-agent` and `api-gateway`).
 
 ### `charts/uptimepulse/templates/prometheus-deployment.yaml`
-Runs Prometheus and mounts the config.
+Runs Prometheus and mounts the config (Deployment; see Dictionary).
 
 - `containers.image`: Prometheus image version.
 - `args`: tells Prometheus where the config and data directory are.
@@ -280,47 +289,47 @@ Exposes Prometheus inside the cluster.
 - `port`/`targetPort`: exposes `9090` for UI/API access.
 
 ### `charts/uptimepulse/templates/prometheus-pvc.yaml`
-Persists Prometheus time-series data across restarts.
+Persists Prometheus time-series data across restarts (PVC; see Dictionary).
 
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
 - `storage: 5Gi`: size of the requested volume.
 
 ### `charts/uptimepulse/templates/alert-rules-configmap.yaml`
-Prometheus alert rules.
+Prometheus alert rules (ConfigMap; see Dictionary).
 
 - `alert: TargetDown` fires when `ping_failure_total` spikes.
 - `expr: increase(ping_failure_total[1m]) > 2`
 - `for: 1m` keeps it from flapping on a single miss.
 
 ### `charts/uptimepulse/templates/alertmanager-configmap.yaml`
-Alertmanager routing config.
+Alertmanager routing config (ConfigMap; see Dictionary).
 
 - Routes all alerts to a webhook receiver called `stdout`.
 - That receiver points to `alert-logger` for now.
 - SMTP settings are read from `alertmanager-smtp` via env vars.
 
 ### `charts/uptimepulse/templates/alertmanager-deployment.yaml`
-Runs Alertmanager.
+Runs Alertmanager (Deployment; see Dictionary).
 
 - Exposes port `9093`.
 - Uses the config from `alertmanager-config`.
 - Loads SMTP credentials from the Secret.
 
 ### `charts/uptimepulse/templates/alertmanager-service.yaml`
-Cluster service for Alertmanager.
+Cluster service for Alertmanager (Service; see Dictionary).
 
 - Used by Prometheus `alertmanagers` config.
 
 ### `charts/uptimepulse/templates/alert-logger-deployment.yaml`
-Tiny HTTP echo service to print alert payloads to stdout.
+Tiny HTTP echo service to print alert payloads to stdout (Deployment; see Dictionary).
 
 - Placeholder for Slack/email later.
 
 ### `charts/uptimepulse/templates/alert-logger-service.yaml`
-Cluster service for `alert-logger`.
+Cluster service for `alert-logger` (Service; see Dictionary).
 
 ### `charts/uptimepulse/templates/alertmanager-secret.yaml`
-SMTP credentials for Alertmanager email.
+SMTP credentials for Alertmanager email (Secret; see Dictionary).
 
 - Override these with `--set alert.smtp.*` or a private values file (see `charts/uptimepulse/values.local.yaml`).
 
@@ -337,20 +346,20 @@ Keeps secrets and local files out of git.
 - If you create a local values override for SMTP credentials, don’t commit it.
 
 ### `charts/uptimepulse/templates/grafana-deployment.yaml`
-Runs Grafana.
+Runs Grafana (Deployment; see Dictionary).
 
 - `containers.image`: Grafana image version.
 - `ports.containerPort: 3000`: Grafana UI port.
 - `volumeMounts` + `volumes`: mounts a PVC at `/var/lib/grafana` so dashboards/users persist.
 
 ### `charts/uptimepulse/templates/grafana-service.yaml`
-Exposes Grafana in the cluster.
+Exposes Grafana in the cluster (Service; see Dictionary).
 
 - `type: ClusterIP`: internal-only service by default.
 - `port`/`targetPort`: exposes `3000`.
 
 ### `charts/uptimepulse/templates/grafana-pvc.yaml`
-Persists Grafana dashboards and user settings across restarts.
+Persists Grafana dashboards and user settings across restarts (PVC; see Dictionary).
 
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
 - `storage: 5Gi`: size of the requested volume.
