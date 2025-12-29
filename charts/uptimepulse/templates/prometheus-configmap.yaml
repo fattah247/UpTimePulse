@@ -14,12 +14,15 @@ data:
     alerting:
       alertmanagers:
         - static_configs:
-            - targets: ["{{ include \"uptimepulse.fullname\" . }}-alertmanager:9093"]
+            - targets:
+                - '{{ include "uptimepulse.fullname" . }}-alertmanager:{{ .Values.service.alertmanagerPort }}'
 
     scrape_configs:
       - job_name: "api-gateway"
         static_configs:
-          - targets: ["{{ include \"uptimepulse.fullname\" . }}-api-gateway:{{ .Values.service.apiGatewayPort }}"]
+          - targets:
+              - '{{ include "uptimepulse.fullname" . }}-api-gateway:{{ .Values.service.apiGatewayPort }}'
       - job_name: "ping-agent"
         static_configs:
-          - targets: ["{{ include \"uptimepulse.fullname\" . }}-ping-agent:{{ .Values.service.pingAgentPort }}"]
+          - targets:
+              - '{{ include "uptimepulse.fullname" . }}-ping-agent:{{ .Values.service.pingAgentPort }}'

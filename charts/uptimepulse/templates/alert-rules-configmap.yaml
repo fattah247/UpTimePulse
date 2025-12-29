@@ -10,9 +10,9 @@ data:
       - name: ping-agent.rules
         rules:
           - alert: TargetDown
-            expr: increase(ping_failure_total[1m]) > 2
+            expr: 'increase(ping_failure_total[1m]) > 2'
             for: 1m
             labels:
               severity: critical
             annotations:
-              summary: "Target down"
+              summary: 'Target down'

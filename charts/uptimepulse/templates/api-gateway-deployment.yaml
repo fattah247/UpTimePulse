@@ -29,11 +29,11 @@ spec:
             - containerPort: 8080
           env:
             - name: PING_AGENT_METRICS_URL
-              value: "http://{{ include \"uptimepulse.fullname\" . }}-ping-agent:8080/metrics"
+              value: 'http://{{ include "uptimepulse.fullname" . }}-ping-agent:8080/metrics'
             - name: PING_TARGET_URL
-              value: "{{ index .Values.pingTargets 0 }}"
+              value: '{{ index .Values.pingTargets 0 }}'
             - name: PING_TARGET_URLS
-              value: "{{ join \",\" .Values.pingTargets }}"
+              value: '{{ join "," .Values.pingTargets }}'
           livenessProbe:
             httpGet:
               path: /healthz

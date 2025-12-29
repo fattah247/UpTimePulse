@@ -26,4 +26,4 @@ data:
             send_resolved: true
       - name: "stdout"
         webhook_configs:
-          - url: "http://{{ include \"uptimepulse.fullname\" . }}-alert-logger:8080/"
+          - url: 'http://{{ include "uptimepulse.fullname" . }}-alert-logger:8080/'
