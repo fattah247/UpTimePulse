@@ -36,17 +36,59 @@ API path: `client` → `api-gateway` → `ping-agent` metrics
 Full diagrams and a template-to-resource map live in `ARCHITECTURE.md`.
 
 ```mermaid
-flowchart LR
-  helm[Helm chart] --> k8s[Kubernetes resources]
-  targets[ConfigMap targets.json] --> ping
-  client[Client] --> api[api-gateway]
-  api -->|reads metrics| metrics[ping-agent /metrics]
-  ping[ping-agent] --> metrics
-  prom[Prometheus] --> grafana[Grafana]
-  prom -->|scrape| metrics
-  prom -->|scrape| api
-  alert[Alertmanager] --> logger[alert-logger]
-  prom -->|alerts| alert
+flowchart TB
+  linkStyle default stroke-width:2px
+  classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:2px
+  classDef config fill:#e0f2fe,stroke:#0284c7,stroke-width:2px
+  classDef service fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+  classDef monitoring fill:#fef3c7,stroke:#d97706,stroke-width:2px
+  classDef alerting fill:#fee2e2,stroke:#dc2626,stroke-width:2px
+
+  subgraph Deploy["Deployment"]
+    helm[Helm chart]
+    k8s[Kubernetes resources]
+    helm --> k8s
+  end
+
+  subgraph Config["Configuration"]
+    targets[ConfigMap<br/>targets.json]
+  end
+
+  subgraph Services["Services"]
+    ping[ping-agent<br/>Pings URLs]
+    api[api-gateway<br/>REST API]
+    metrics[ping-agent<br/>/metrics endpoint]
+  end
+
+  subgraph Monitoring["Monitoring"]
+    prom[Prometheus<br/>Scrapes & stores]
+    grafana[Grafana<br/>Dashboards]
+  end
+
+  subgraph Alerting["Alerting"]
+    alert[Alertmanager<br/>Routes alerts]
+    logger[alert-logger<br/>Logs alerts]
+  end
+
+  subgraph Client["Client"]
+    client[Client]
+  end
+
+  targets -->|"provides targets"| ping
+  ping -->|"exposes"| metrics
+  client -->|"HTTP request"| api
+  api -->|"reads metrics"| metrics
+  prom -->|"scrapes"| metrics
+  prom -->|"scrapes"| api
+  prom -->|"queries data"| grafana
+  prom -->|"sends alerts"| alert
+  alert -->|"webhook"| logger
+
+  class Deploy,Config,Services,Monitoring,Alerting,Client group
+  class targets config
+  class ping,api,metrics service
+  class prom,grafana monitoring
+  class alert,logger alerting
 ```
 
 ## Project layout
