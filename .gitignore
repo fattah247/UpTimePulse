@@ -2,6 +2,7 @@
 k8s/alertmanager-secret.yaml
 *.env
 .env
+charts/uptimepulse/values.local.yaml
 
 # OS/editor
 .DS_Store

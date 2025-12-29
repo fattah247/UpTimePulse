@@ -10,6 +10,7 @@ Lightweight uptime + latency stack for learning Kubernetes, Prometheus, and real
 ## Table of Contents
 
 - [Architecture overview](#architecture-overview)
+- [Architecture & template map (detailed)](ARCHITECTURE.md)
 - [Project layout](#project-layout)
 - [Quickstart (local Docker)](#quickstart-local-docker)
 - [Quickstart (Minikube)](#quickstart-minikube)
@@ -31,6 +32,8 @@ Here’s the quick mental model:
 
 Data path: `ping-agent` → `Prometheus` → `Grafana`  
 API path: `client` → `api-gateway` → `ping-agent` metrics
+
+Full diagrams and a template-to-resource map live in `ARCHITECTURE.md`.
 
 ```mermaid
 flowchart LR
@@ -319,7 +322,7 @@ Cluster service for `alert-logger`.
 ### `charts/uptimepulse/templates/alertmanager-secret.yaml`
 SMTP credentials for Alertmanager email.
 
-- Override these with `--set alert.smtp.*` or a private values file.
+- Override these with `--set alert.smtp.*` or a private values file (see `charts/uptimepulse/values.local.yaml`).
 
 ### `.github/workflows/ci.yml`
 Single CI pipeline for Go + Python + Docker builds.
@@ -473,6 +476,11 @@ helm upgrade --install uptimepulse ./charts/uptimepulse \\
   --set alert.smtp.password="APP_PASSWORD" \\
   --set alert.smtp.from="you@gmail.com" \\
   --set alert.smtp.to="alerts@example.com"
+```
+
+Local override file (to make secrets stay out of git):
+```
+helm upgrade --install uptimepulse ./charts/uptimepulse -f charts/uptimepulse/values.local.yaml
 ```
 
 ### 3) Restart deployments and wait for readiness
