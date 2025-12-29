@@ -13,7 +13,7 @@ flowchart LR
   classDef alertFlow stroke:#ea580c,stroke-width:2px
   classDef vizFlow stroke:#7c3aed,stroke-width:2px
 
-  subgraph Access["Access Layer"]
+  subgraph Access["Access Layer (if ingress.enabled)"]
     client((Client))
     ingress[Ingress<br/>HTTP routing]
   end
@@ -35,6 +35,7 @@ flowchart LR
   client -->|"HTTP request"| ingress -->|"routes to"| apiSvc -->|"serves"| apiDep
   apiDep -->|"reads metrics"| pingSvc -->|"exposes"| pingDep
   pingDep -->|"pings targets & exposes<br/>Prometheus metrics"| prom
+  prom -->|"scrapes /metrics"| apiSvc
   prom -->|"visualizes data"| grafana
   prom -->|"sends alerts"| am -->|"logs alerts"| logger
 
@@ -58,7 +59,7 @@ If a term is unfamiliar (ConfigMap, PVC, HPA, etc.), see the Dictionary section 
 | Grafana | Dashboards | `grafana-deployment.yaml` (Deployment), `grafana-service.yaml` (Service), `grafana-pvc.yaml` (PVC) |
 | Dashboard UI | Web UI | `dashboard-deployment.yaml` (Deployment) |
 | Ingress | External entrypoint | `ingress.yaml` (Ingress; see Dictionary) |
-| HPA | Auto-scaling | `hpa.yaml` (HPA; see Dictionary) |
+| HPA | Auto-scaling (if hpa.enabled) | `hpa.yaml` (HPA; see Dictionary) |
 | Shared helpers | Naming/label helpers | `_helpers.tpl` |
 
 ## Dictionary (terms used in this doc)
@@ -140,7 +141,7 @@ flowchart TB
     grafPVC[grafana-pvc<br/>Dashboard storage]
   end
 
-  subgraph Access["Access Layer"]
+  subgraph Access["Access Layer (if ingress.enabled)"]
     ing[ingress<br/>HTTP routing]
   end
 
@@ -158,13 +159,11 @@ flowchart TB
   promDep -->|"data source"| grafDep
   grafPVC -->|"dashboards"| grafDep
   grafDep -->|"dashboard UI"| grafSvc
-  apiDep -->|"reads metrics"| pingSvc
-  apiDep -->|"status checks"| promSvc
-  apiDep -->|"health checks"| grafSvc
-  apiDep -->|"integrates"| dash
+  apiDep -->|"reads metrics for /uptime-summary"| pingSvc
   apiDep -->|"API endpoint"| apiSvc -->|"routes traffic"| ing
 
-  promDep -->|"scrapes"| apiSvc
+  promDep -->|"scrapes /metrics"| pingSvc
+  promDep -->|"scrapes /metrics"| apiSvc
 
   class Config,Services,Metrics,Alerting,Visualization,Access group
   linkStyle 0 configFlow
