@@ -39,22 +39,27 @@ Full diagrams and a template-to-resource map live in `ARCHITECTURE.md`.
 flowchart TB
   linkStyle default stroke-width:2px
   classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:2px
+  classDef deploy fill:#ddd6fe,stroke:#7c3aed,stroke-width:2px
   classDef config fill:#e0f2fe,stroke:#0284c7,stroke-width:2px
   classDef service fill:#dcfce7,stroke:#16a34a,stroke-width:2px
   classDef monitoring fill:#fef3c7,stroke:#d97706,stroke-width:2px
   classDef alerting fill:#fee2e2,stroke:#dc2626,stroke-width:2px
 
-  subgraph Deploy["Deployment"]
-    helm[Helm chart]
-    k8s[Kubernetes resources]
-    helm --> k8s
+  subgraph Deploy["Deployment Flow"]
+    helm[Helm chart<br/>templates + values]
+    k8sYAML[Kubernetes YAML<br/>manifests]
+    k8sCluster[Kubernetes Cluster<br/>Minikube]
+    pods[Running Pods<br/>Docker containers]
+    helm -->|"helm install<br/>renders templates"| k8sYAML
+    k8sYAML -->|"kubectl apply<br/>sends to API"| k8sCluster
+    k8sCluster -->|"controllers create"| pods
   end
 
   subgraph Config["Configuration"]
     targets[ConfigMap<br/>targets.json]
   end
 
-  subgraph Services["Services"]
+  subgraph Services["Application Services"]
     ping[ping-agent<br/>Pings URLs]
     api[api-gateway<br/>REST API]
     metrics[ping-agent<br/>/metrics endpoint]
@@ -74,7 +79,7 @@ flowchart TB
     client[Client]
   end
 
-  targets -->|"provides targets"| ping
+  targets -->|"mounted as volume"| ping
   ping -->|"exposes"| metrics
   client -->|"HTTP request"| api
   api -->|"reads metrics"| metrics
@@ -84,7 +89,15 @@ flowchart TB
   prom -->|"sends alerts"| alert
   alert -->|"webhook"| logger
 
+  pods -.->|"contains"| ping
+  pods -.->|"contains"| api
+  pods -.->|"contains"| prom
+  pods -.->|"contains"| grafana
+  pods -.->|"contains"| alert
+  pods -.->|"contains"| logger
+
   class Deploy,Config,Services,Monitoring,Alerting,Client group
+  class helm,k8sYAML,k8sCluster,pods deploy
   class targets config
   class ping,api,metrics service
   class prom,grafana monitoring
