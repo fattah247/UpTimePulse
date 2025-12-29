@@ -34,6 +34,8 @@ API path: `client` → `api-gateway` → `ping-agent` metrics
 
 ```mermaid
 flowchart LR
+  helm[Helm chart] --> k8s[Kubernetes resources]
+  targets[ConfigMap targets.json] --> ping
   client[Client] --> api[api-gateway]
   api --> metrics[ping-agent /metrics]
   ping[ping-agent] --> metrics
@@ -156,7 +158,7 @@ This is the heart of the system. If this isn’t running, everything else is jus
 - counters (`ping_success_total`, `ping_failure_total`)
 - histogram (`ping_latency_seconds`)
 - `/metrics` for scraping
-- targets come from `PING_TARGET_URLS` (comma‑separated)
+- targets come from `/config/targets.json` (mounted ConfigMap); env fallback exists only if the file is missing
 
 Without this, there’s nothing to observe.
 
@@ -225,6 +227,10 @@ Runs the ping-agent container.
 - `containers.image`: which image to run (`ping-agent:latest`).
 - `imagePullPolicy: IfNotPresent`: use local image in Minikube if available.
 - `ports.containerPort`: declares the app port (8080).
+- `volumeMounts`: mounts `/config/targets.json` from the ConfigMap.
+
+### `charts/uptimepulse/templates/ping-targets-configmap.yaml`
+Stores the target list as JSON so ping-agent can read it from `/config/targets.json`.
 
 ### `charts/uptimepulse/templates/ping-agent-service.yaml`
 Exposes ping-agent inside the cluster so Prometheus can scrape it.
@@ -415,7 +421,9 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Docker couldn't connect to the daemon (Docker Desktop not running or shell pointed at Minikube's daemon).
 - `ErrImageNeverPull` in Kubernetes (image not available inside Minikube).
 - Helm install failed from the wrong working directory (chart path not found).
+- Helm failed with template parse errors (escaped quotes inside templates).
 - Port-forward to `:8080` returned `connection refused` (pod was running an old image without the metrics server).
+- Port-forward to the API gateway failed because the Service exposed port 80, not 8080.
 - `/uptime-summary` returned `0%` availability even though `/metrics` showed success counts.
 - Go build errors (missing `go.sum`, Go version mismatch, syntax errors in `main.go`).
 - Prometheus/Grafana rollouts stuck due to PVC lock during rolling updates.
@@ -425,6 +433,7 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Start Docker Desktop; reset Docker env with `eval $(minikube docker-env -u)` when needed.
 - Build the image inside Minikube (`eval $(minikube -p minikube docker-env)` + `docker build ...`).
 - Use repo root for `helm install uptimepulse ./charts/uptimepulse`.
+- Fix template quoting by using single-quoted strings (avoid `\"` in Helm templates).
 - Start Minikube and select the right context (`minikube start`, `kubectl config use-context minikube`).
 - The metrics parser in `services/api-gateway/main.py` was too strict (expected unlabeled counters). Fix by reading label values like `target="..."` and summing `ping_success_total{target="..."}` and `ping_failure_total{target="..."}` per target.
 - Update Dockerfile to include `go.sum` and use the correct Go version.
@@ -434,6 +443,7 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - Keep `monitoring/grafana-dashboard.json` for Grafana import and install Kubernetes resources via Helm.
 - For alerts, check `kubectl logs deploy/uptimepulse-alert-logger` to see raw payloads.
 - If Grafana rollouts keep hanging, set `strategy: Recreate` in `charts/uptimepulse/templates/grafana-deployment.yaml`.
+- If you port-forward the API gateway, use `kubectl port-forward svc/uptimepulse-api-gateway 8080:80` (or set `service.apiGatewayPort: 8080`).
 
 ### Verification steps
 - `kubectl logs -l app.kubernetes.io/component=ping-agent --tail=20` shows ping logs and metrics server start line.
