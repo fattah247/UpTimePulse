@@ -1,20 +1,39 @@
-# UpTimePulse Architecture & Template Map
+# UptimePulse Architecture & Template Map
 
-This doc complements `README.md` with diagrams and a file-by-file map of the Helm chart. For quickstart/commands and service details, jump to [README.md](README.md); use this doc for the architecture/map view.
+This doc complements `README.md` with diagrams and a file-by-file map of the Helm chart. For quickstart/commands and service details, jump to [README.md](README.md). This doc is the architecture/map view.
 
 ## High-level flow (mermaid)
 
 ```mermaid
 flowchart LR
-  client((Client)) --> ingress[Ingress]
-  ingress --> apiGwSvc[api-gateway Service]
-  apiGwSvc --> apiGw[api-gateway Deployment]
-  apiGw --> pingSvc[png-agent Service]
-  pingSvc --> pingDep[ping-agent Deployment]
-  pingDep -->|/metrics| prom[Prometheus]
-  prom --> grafana[Grafana]
-  prom -->|alerts| am[Alertmanager]
-  am --> logger[alert-logger]
+  linkStyle default stroke-width:1px
+  classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:1px
+  subgraph Access["Access"]
+    client((Client))
+    ingress[Ingress]
+  end
+
+  subgraph Services["Services"]
+    apiSvc[api-gateway Service]
+    apiDep[api-gateway Deployment]
+    pingSvc[ping-agent Service]
+    pingDep[ping-agent Deployment]
+  end
+
+  subgraph Observability["Observability"]
+    prom[Prometheus]
+    grafana[Grafana]
+    am[Alertmanager]
+    logger[alert-logger]
+  end
+
+  client --> ingress --> apiSvc --> apiDep
+  apiDep --> pingSvc --> pingDep
+  pingDep -->|/metrics| prom
+  prom --> grafana
+  prom -->|alerts| am --> logger
+
+  class Access,Services,Observability group
 ```
 
 ## Component roles and their templates
@@ -35,65 +54,69 @@ flowchart LR
 ## End-to-end data path (mermaid)
 
 ```mermaid
-flowchart TD
-  subgraph Config
-    targets[png-targets-configmap]
+flowchart TB
+  linkStyle default stroke-width:1px
+  classDef group fill:#f7f7f7,stroke:#cccccc,stroke-width:1px
+  subgraph Config["Config"]
+    targets[ping-targets-configmap]
     promCfg[prometheus-configmap]
     alertRules[alert-rules-configmap]
   end
 
-  subgraph Monitoring
-    ping[png-agent Deployment]
-    pingSvc[png-agent Service]
+  subgraph Services["Services"]
+    pingDep[ping-agent Deployment]
+    pingSvc[ping-agent Service]
+    apiDep[api-gateway Deployment]
+    apiSvc[api-gateway Service]
+    dash[dashboard Deployment]
   end
 
-  subgraph Metrics
-    prom[prometheus Deployment]
+  subgraph Metrics["Metrics"]
+    promDep[prometheus Deployment]
     promSvc[prometheus Service]
     promPVC[prometheus-pvc]
   end
 
-  subgraph Alerting
-    am[alertmanager Deployment]
+  subgraph Alerting["Alerting"]
+    amDep[alertmanager Deployment]
     amSvc[alertmanager Service]
     amCfg[alertmanager-configmap]
     amSecret[alertmanager-secret]
-    logger[alert-logger Deployment]
+    loggerDep[alert-logger Deployment]
     loggerSvc[alert-logger Service]
   end
 
-  subgraph Visualization
-    graf[grafana Deployment]
+  subgraph Visualization["Visualization"]
+    grafDep[grafana Deployment]
     grafSvc[grafana Service]
     grafPVC[grafana-pvc]
-    dash[dashboard Deployment]
   end
 
-  subgraph Access
-    api[api-gateway Deployment]
-    apiSvc[api-gateway Service]
+  subgraph Access["Access"]
     ing[ingress]
   end
 
-  targets --> ping
-  ping --> pingSvc --> prom
-  promCfg --> prom
-  alertRules --> prom
-  promPVC --> prom
-  prom --> promSvc
-  prom -->|alerts| am
-  amCfg --> am
-  amSecret --> am
-  am --> logger
-  logger --> loggerSvc
-  prom --> graf
-  grafPVC --> graf
-  graf --> grafSvc
-  api --> pingSvc
-  api --> promSvc
-  api --> grafSvc
-  api --> dash
-  api --> apiSvc --> ing
+  targets --> pingDep
+  pingDep --> pingSvc --> promDep
+  promCfg --> promDep
+  alertRules --> promDep
+  promPVC --> promDep
+  promDep --> promSvc
+  promDep -->|alerts| amDep
+  amCfg --> amDep
+  amSecret --> amDep
+  amDep --> loggerDep
+  loggerDep --> loggerSvc
+  promDep --> grafDep
+  grafPVC --> grafDep
+  grafDep --> grafSvc
+  apiDep --> pingSvc
+  apiDep --> promSvc
+  apiDep --> grafSvc
+  apiDep --> dash
+  apiDep --> apiSvc --> ing
+
+  class Config,Services,Metrics,Alerting,Visualization,Access group
 ```
 
 ## Mini “how Helm renders templates” (quick reference)
@@ -115,8 +138,8 @@ flowchart TD
 - **API Gateway**: `api-gateway-deployment` (FastAPI) → `api-gateway-service` → ingress (if enabled).
 - **Grafana**: `grafana-pvc` → `grafana-deployment` → `grafana-service`.
 - **Dashboard UI**: `dashboard-deployment` (optionally fronted by ingress via API gateway).
-- **Ingress**: `ingress.yaml` routes external HTTP to `api-gateway-service`.
-- **HPA**: `hpa.yaml` defines autoscaling rules (disabled unless values enable it).
+- **Ingress**: `ingress.yaml` routes external HTTP to `api-gateway-service` (only when enabled in values).
+- **HPA**: `hpa.yaml` defines autoscaling rules (inactive unless enabled in values).
 
 ## Logical deployment order (Helm handles it, but for understanding)
 
@@ -127,5 +150,3 @@ flowchart TD
 - Need the big picture? Check the two mermaid diagrams above.
 - Need to know what a specific file does? Use the table under “Component roles and their templates”.
 - Need Helm templating tips? See “Mini how Helm renders templates”.
-
-
