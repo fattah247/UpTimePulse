@@ -1,0 +1,4 @@
+apiVersion: v2
+name: iyup
+version: 0.1.0
+description: iYup uptime monitoring stack with Kubernetes, Prometheus, and FastAPI

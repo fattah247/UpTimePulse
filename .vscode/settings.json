@@ -1,6 +1,6 @@
 {
   "files.associations": {
-    "charts/uptimepulse/templates/*.yaml": "helm",
-    "charts/uptimepulse/templates/*.yml": "helm"
+    "charts/iyup/templates/*.yaml": "helm",
+    "charts/iyup/templates/*.yml": "helm"
   }
 }

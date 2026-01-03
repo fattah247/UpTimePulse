@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-alertmanager-config
+  name: {{ include "iyup.fullname" . }}-alertmanager-config
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
 data:
   alertmanager.yml: |
     global:
@@ -26,4 +26,4 @@ data:
             send_resolved: true
       - name: "stdout"
         webhook_configs:
-          - url: 'http://{{ include "uptimepulse.fullname" . }}-alert-logger:8080/'
+          - url: 'http://{{ include "iyup.fullname" . }}-alert-logger:8080/'

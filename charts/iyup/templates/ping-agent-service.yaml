@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-ping-agent
+  name: {{ include "iyup.fullname" . }}-ping-agent
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
     app.kubernetes.io/component: ping-agent
 spec:
   selector:
-    {{- include "uptimepulse.selectorLabels" . | nindent 4 }}
+    {{- include "iyup.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: ping-agent
   ports:
     - name: http

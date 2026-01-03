@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-alert-logger
+  name: {{ include "iyup.fullname" . }}-alert-logger
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
     app.kubernetes.io/component: alert-logger
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      {{- include "iyup.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: alert-logger
   template:
     metadata:
       labels:
-        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        {{- include "iyup.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: alert-logger
     spec:
       containers:

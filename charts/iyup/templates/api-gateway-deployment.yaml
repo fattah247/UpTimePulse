@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-api-gateway
+  name: {{ include "iyup.fullname" . }}-api-gateway
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
     app.kubernetes.io/component: api-gateway
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      {{- include "iyup.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: api-gateway
   template:
     metadata:
       labels:
-        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        {{- include "iyup.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: api-gateway
       annotations:
         prometheus.io/scrape: "true"
@@ -29,7 +29,7 @@ spec:
             - containerPort: 8080
           env:
             - name: PING_AGENT_METRICS_URL
-              value: 'http://{{ include "uptimepulse.fullname" . }}-ping-agent:8080/metrics'
+              value: 'http://{{ include "iyup.fullname" . }}-ping-agent:8080/metrics'
             - name: PING_TARGET_URL
               value: '{{ index .Values.pingTargets 0 }}'
             - name: PING_TARGET_URLS

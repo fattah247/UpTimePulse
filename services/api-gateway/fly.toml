@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for uptimepulse-api-gateway on 2025-12-30T16:11:03+07:00
+# fly.toml app configuration file generated for iyup-api-gateway on 2025-12-30T16:11:03+07:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'uptimepulse-api-gateway'
+app = 'iyup-api-gateway'
 primary_region = 'sin'
 
 [build]

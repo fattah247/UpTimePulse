@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-prometheus
+  name: {{ include "iyup.fullname" . }}-prometheus
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
     app.kubernetes.io/component: prometheus
 spec:
   strategy:
@@ -11,12 +11,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      {{- include "iyup.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: prometheus
   template:
     metadata:
       labels:
-        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        {{- include "iyup.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: prometheus
     spec:
       containers:
@@ -38,10 +38,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "uptimepulse.fullname" . }}-prometheus-config
+            name: {{ include "iyup.fullname" . }}-prometheus-config
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "uptimepulse.fullname" . }}-prometheus-data
+            claimName: {{ include "iyup.fullname" . }}-prometheus-data
         - name: rules
           configMap:
-            name: {{ include "uptimepulse.fullname" . }}-prometheus-alert-rules
+            name: {{ include "iyup.fullname" . }}-prometheus-alert-rules

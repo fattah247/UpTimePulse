@@ -1,6 +1,6 @@
 prometheus.scrape "ping_agent" {
   targets = [{
-    __address__ = "uptimepulse-ping-agent.fly.dev",
+    __address__ = "iyup-ping-agent.fly.dev",
   }]
   scheme       = "https"
   metrics_path = "/metrics"

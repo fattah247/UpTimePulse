@@ -1,4 +1,4 @@
-# UptimePulse Architecture & Template Map
+# iYup Architecture & Template Map
 
 This doc complements `README.md` with diagrams and a file-by-file map of the Helm chart. For quickstart/commands and service details, jump to [README.md](README.md). This doc is the architecture/map view.
 
@@ -71,7 +71,7 @@ If a term is unfamiliar (ConfigMap, PVC, HPA, etc.), see the Dictionary section 
 - **Deployment**: Manages pod replicas and rollouts for a service.
 - **Service**: Stable DNS + load‑balancing over pods.
 - **Ingress**: HTTP entrypoint that routes host/path → Service (needs an Ingress controller).
-- **Helm chart**: Parameterized packaging for all Kubernetes resources in `charts/uptimepulse`.
+- **Helm chart**: Parameterized packaging for all Kubernetes resources in `charts/iyup`.
 
 ## Who produces what (and who consumes it)
 Terms in **bold** here map to the Dictionary section below.
@@ -176,11 +176,11 @@ flowchart TB
 
 ## Mini “how Helm renders templates” (quick reference)
 
-- `define "uptimepulse.labels"`: creates a reusable template in `_helpers.tpl`.
-- `include "uptimepulse.labels" .`: calls that template and passes the current context (`.`).
+- `define "iyup.labels"`: creates a reusable template in `_helpers.tpl`.
+- `include "iyup.labels" .`: calls that template and passes the current context (`.`).
 - `nindent X`: adds a newline and indents the rendered block by `X` spaces so YAML stays valid.
 - Example (from `alert-logger-deployment.yaml`):
-  - We include labels via `include "uptimepulse.labels" . | nindent 4`.
+  - We include labels via `include "iyup.labels" . | nindent 4`.
   - Helm replaces it with the three standard labels, indented 4 spaces.
   - The file then adds `app.kubernetes.io/component: alert-logger` as a fourth label.
 

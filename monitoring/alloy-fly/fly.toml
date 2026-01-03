@@ -1,6 +1,6 @@
-# fly.toml app configuration file for uptimepulse-alloy
+# fly.toml app configuration file for iyup-alloy
 
-app = "uptimepulse-alloy"
+app = "iyup-alloy"
 primary_region = "sin"
 
 [build]

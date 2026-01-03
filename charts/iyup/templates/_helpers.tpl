@@ -1,8 +1,8 @@
-{{- define "uptimepulse.name" -}}
+{{- define "iyup.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
-{{- define "uptimepulse.fullname" -}}
+{{- define "iyup.fullname" -}}
 {{- if .Values.fullnameOverride -}}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
@@ -10,13 +10,13 @@
 {{- end -}}
 {{- end -}}
 
-{{- define "uptimepulse.labels" -}}
-app.kubernetes.io/name: {{ include "uptimepulse.name" . }}
+{{- define "iyup.labels" -}}
+app.kubernetes.io/name: {{ include "iyup.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end -}}
 
-{{- define "uptimepulse.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "uptimepulse.name" . }}
+{{- define "iyup.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "iyup.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}

@@ -1,4 +1,4 @@
-# UptimePulse
+# iYup
 
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-1.29-blue)
 ![Prometheus](https://img.shields.io/badge/Prometheus-2.48-orange)
@@ -57,7 +57,7 @@ flowchart LR
 
 ## Project layout
 - `services/` contains the application services (ping-agent, api-gateway, dashboard-ui).
-- `charts/uptimepulse/` is the Helm chart (templates + values).
+- `charts/iyup/` is the Helm chart (templates + values).
 - `ci-cd/` contains legacy CI/CD pipeline configuration (kept for reference).
 - `.github/workflows/` is the active CI workflow location.
 - `monitoring/` contains the Grafana dashboard JSON.
@@ -92,8 +92,8 @@ kubectl config use-context minikube
 eval $(minikube -p minikube docker-env)
 docker build -t ping-agent:latest services/ping-agent
 docker build -t api-gateway:latest services/api-gateway
-helm install uptimepulse ./charts/uptimepulse
-kubectl port-forward svc/uptimepulse-ping-agent 18080:8080
+helm install iyup ./charts/iyup
+kubectl port-forward svc/iyup-ping-agent 18080:8080
 ```
 
 In another terminal:
@@ -104,7 +104,7 @@ curl -v http://localhost:18080/metrics
 
 To remove the stack:
 ```
-helm uninstall uptimepulse
+helm uninstall iyup
 ```
 
 For the command explanations, jump to [Command Notes](#command-notes) and [Flag Cheat Sheet](#flag-cheat-sheet).
@@ -115,8 +115,8 @@ Build and run the API gateway in Minikube:
 ```
 eval $(minikube -p minikube docker-env)
 docker build -t api-gateway:latest services/api-gateway
-helm upgrade --install uptimepulse ./charts/uptimepulse
-kubectl port-forward svc/uptimepulse-api-gateway 8080:8080
+helm upgrade --install iyup ./charts/iyup
+kubectl port-forward svc/iyup-api-gateway 8080:8080
 ```
 
 Test it:
@@ -130,8 +130,8 @@ Note: `api-gateway` uses `imagePullPolicy: IfNotPresent`. Build inside Minikube 
 What each command means:
 - `eval $(minikube -p minikube docker-env)` points Docker at Minikube's Docker daemon.
 - `docker build -t api-gateway:latest services/api-gateway` builds the image inside Minikube.
-- `helm upgrade --install uptimepulse ./charts/uptimepulse` applies the Helm chart (create or update).
-- `kubectl port-forward svc/uptimepulse-api-gateway 8080:8080` tunnels local port `8080` to the Service.
+- `helm upgrade --install iyup ./charts/iyup` applies the Helm chart (create or update).
+- `kubectl port-forward svc/iyup-api-gateway 8080:8080` tunnels local port `8080` to the Service.
 
 ## API Endpoints (What They Actually Do)
 Endpoints from `api-gateway`:
@@ -165,7 +165,7 @@ These are the values you are most likely to tweak:
 - `hpa.enabled`, `hpa.minReplicas`, `hpa.maxReplicas` for scaling
 - `alert.smtp.*` (user, password, from, to) for Alertmanager email
 
-See `charts/uptimepulse/values.yaml` for the full list.
+See `charts/iyup/values.yaml` for the full list.
 
 ## Secrets and SMTP (Alertmanager)
 SMTP credentials are provided via Helm values (preferred) or a local values file.
@@ -182,7 +182,7 @@ alert:
 
 Apply with:
 ```
-helm upgrade --install uptimepulse ./charts/uptimepulse -f charts/uptimepulse/values.local.yaml
+helm upgrade --install iyup ./charts/iyup -f charts/iyup/values.local.yaml
 ```
 
 ## Command Notes
@@ -192,9 +192,9 @@ Short explanations of the commands used above.
 - `minikube start` starts a local Kubernetes cluster.
 - `kubectl config use-context minikube` points `kubectl` at that cluster.
 - `eval $(minikube -p minikube docker-env)` points Docker at Minikube's Docker daemon.
-- `helm install uptimepulse ./charts/uptimepulse` installs the chart into the cluster.
-- `helm upgrade --install uptimepulse ./charts/uptimepulse` re‑applies chart changes.
-- `kubectl port-forward svc/uptimepulse-ping-agent 18080:8080` tunnels a Service port to your machine.
+- `helm install iyup ./charts/iyup` installs the chart into the cluster.
+- `helm upgrade --install iyup ./charts/iyup` re‑applies chart changes.
+- `kubectl port-forward svc/iyup-ping-agent 18080:8080` tunnels a Service port to your machine.
 
 ### Docker
 - `docker build -t ping-agent:dev .` builds and tags an image from the current directory.
@@ -238,8 +238,8 @@ Without this, there’s nothing to observe.
 Prometheus pulls `/metrics` every 15s and stores the history. That’s the difference between “I can see a number now” and “I can graph the last 24 hours.”
 
 Retention/storage notes:
-- Retention is set to `14d` via `--storage.tsdb.retention.time=14d` in `charts/uptimepulse/templates/prometheus-deployment.yaml`.
-- PVC (see Dictionary) size is `5Gi` in `charts/uptimepulse/templates/prometheus-pvc.yaml`.
+- Retention is set to `14d` via `--storage.tsdb.retention.time=14d` in `charts/iyup/templates/prometheus-deployment.yaml`.
+- PVC (see Dictionary) size is `5Gi` in `charts/iyup/templates/prometheus-pvc.yaml`.
 - Prometheus storage docs: [https://prometheus.io/docs/prometheus/latest/storage/](https://prometheus.io/docs/prometheus/latest/storage/)
 
 Sizing approach (practical):
@@ -290,7 +290,7 @@ The Service gives `ping-agent` a stable DNS name, Prometheus scrapes it, and Gra
 
 ## What Each YAML File Is Doing (and Why)
 If a term is unclear (ConfigMap, PVC, Secret, etc.), jump to `ARCHITECTURE.md#dictionary-terms-used-in-this-doc`.
-### `charts/uptimepulse/templates/ping-agent-deployment.yaml`
+### `charts/iyup/templates/ping-agent-deployment.yaml`
 Runs the ping-agent container.
 
 - `apiVersion`, `kind`: identifies a Deployment.
@@ -302,17 +302,17 @@ Runs the ping-agent container.
 - `ports.containerPort`: declares the app port (8080).
 - `volumeMounts`: mounts `/config/targets.json` from the ConfigMap.
 
-### `charts/uptimepulse/templates/ping-targets-configmap.yaml`
+### `charts/iyup/templates/ping-targets-configmap.yaml`
 Stores the target list as JSON so ping-agent can read it from `/config/targets.json`.
 
-### `charts/uptimepulse/templates/ping-agent-service.yaml`
+### `charts/iyup/templates/ping-agent-service.yaml`
 Exposes ping-agent inside the cluster so Prometheus can scrape it.
 
 - `kind: Service`: stable DNS and load-balanced access.
 - `selector`: matches pods labeled `app: ping-agent`.
 - `port`/`targetPort`: forwards 8080 to the pod.
 
-### `charts/uptimepulse/templates/api-gateway-deployment.yaml`
+### `charts/iyup/templates/api-gateway-deployment.yaml`
 Runs the FastAPI gateway.
 
 - `containerPort: 8080` matches the `uvicorn` port.
@@ -321,19 +321,19 @@ Runs the FastAPI gateway.
 - `livenessProbe`/`readinessProbe` hit `/healthz`.
 - Prometheus scrape annotations enable `/metrics` scraping.
 
-### `charts/uptimepulse/templates/api-gateway-service.yaml`
+### `charts/iyup/templates/api-gateway-service.yaml`
 Service fronting the API gateway.
 
 - Used for port‑forward and Prometheus scraping (`api-gateway:8080`).
 
-### `charts/uptimepulse/templates/prometheus-configmap.yaml`
+### `charts/iyup/templates/prometheus-configmap.yaml`
 Holds Prometheus configuration (ConfigMap; see Dictionary).
 
 - `kind: ConfigMap`: stores `prometheus.yml` as data.
 - `scrape_interval`: how often Prometheus scrapes.
 - `scrape_configs`: targets to scrape (`ping-agent` and `api-gateway`).
 
-### `charts/uptimepulse/templates/prometheus-deployment.yaml`
+### `charts/iyup/templates/prometheus-deployment.yaml`
 Runs Prometheus and mounts the config (Deployment; see Dictionary).
 
 - `containers.image`: Prometheus image version.
@@ -343,56 +343,56 @@ Runs Prometheus and mounts the config (Deployment; see Dictionary).
 - `ports.containerPort: 9090`: Prometheus UI and API.
 - `strategy.type: Recreate`: avoids PVC lock conflicts by ensuring a single pod.
 
-### `charts/uptimepulse/templates/prometheus-service.yaml`
+### `charts/iyup/templates/prometheus-service.yaml`
 Exposes Prometheus inside the cluster.
 
 - `selector`: matches the Prometheus pod.
 - `port`/`targetPort`: exposes `9090` for UI/API access.
 
-### `charts/uptimepulse/templates/prometheus-pvc.yaml`
+### `charts/iyup/templates/prometheus-pvc.yaml`
 Persists Prometheus time-series data across restarts (PVC; see Dictionary).
 
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
 - `storage: 5Gi`: size of the requested volume.
 
-### `charts/uptimepulse/templates/alert-rules-configmap.yaml`
+### `charts/iyup/templates/alert-rules-configmap.yaml`
 Prometheus alert rules (ConfigMap; see Dictionary).
 
 - `alert: TargetDown` fires when `ping_failure_total` spikes.
 - `expr: increase(ping_failure_total[1m]) > 2`
 - `for: 1m` keeps it from flapping on a single miss.
 
-### `charts/uptimepulse/templates/alertmanager-configmap.yaml`
+### `charts/iyup/templates/alertmanager-configmap.yaml`
 Alertmanager routing config (ConfigMap; see Dictionary).
 
 - Routes all alerts to a webhook receiver called `stdout`.
 - That receiver points to `alert-logger` for now.
 - SMTP settings are read from `alertmanager-smtp` via env vars.
 
-### `charts/uptimepulse/templates/alertmanager-deployment.yaml`
+### `charts/iyup/templates/alertmanager-deployment.yaml`
 Runs Alertmanager (Deployment; see Dictionary).
 
 - Exposes port `9093`.
 - Uses the config from `alertmanager-config`.
 - Loads SMTP credentials from the Secret.
 
-### `charts/uptimepulse/templates/alertmanager-service.yaml`
+### `charts/iyup/templates/alertmanager-service.yaml`
 Cluster service for Alertmanager (Service; see Dictionary).
 
 - Used by Prometheus `alertmanagers` config.
 
-### `charts/uptimepulse/templates/alert-logger-deployment.yaml`
+### `charts/iyup/templates/alert-logger-deployment.yaml`
 Tiny HTTP echo service to print alert payloads to stdout (Deployment; see Dictionary).
 
 - Placeholder for Slack/email later.
 
-### `charts/uptimepulse/templates/alert-logger-service.yaml`
+### `charts/iyup/templates/alert-logger-service.yaml`
 Cluster service for `alert-logger` (Service; see Dictionary).
 
-### `charts/uptimepulse/templates/alertmanager-secret.yaml`
+### `charts/iyup/templates/alertmanager-secret.yaml`
 SMTP credentials for Alertmanager email (Secret; see Dictionary).
 
-- Override these with `--set alert.smtp.*` or a private values file (see `charts/uptimepulse/values.local.yaml`).
+- Override these with `--set alert.smtp.*` or a private values file (see `charts/iyup/values.local.yaml`).
 
 ### `.github/workflows/ci.yml`
 Single CI pipeline for Go + Python + Docker builds.
@@ -406,20 +406,20 @@ Keeps secrets and local files out of git.
 
 - If you create a local values override for SMTP credentials, don’t commit it.
 
-### `charts/uptimepulse/templates/grafana-deployment.yaml`
+### `charts/iyup/templates/grafana-deployment.yaml`
 Runs Grafana (Deployment; see Dictionary).
 
 - `containers.image`: Grafana image version.
 - `ports.containerPort: 3000`: Grafana UI port.
 - `volumeMounts` + `volumes`: mounts a PVC at `/var/lib/grafana` so dashboards/users persist.
 
-### `charts/uptimepulse/templates/grafana-service.yaml`
+### `charts/iyup/templates/grafana-service.yaml`
 Exposes Grafana in the cluster (Service; see Dictionary).
 
 - `type: ClusterIP`: internal-only service by default.
 - `port`/`targetPort`: exposes `3000`.
 
-### `charts/uptimepulse/templates/grafana-pvc.yaml`
+### `charts/iyup/templates/grafana-pvc.yaml`
 Persists Grafana dashboards and user settings across restarts (PVC; see Dictionary).
 
 - `kind: PersistentVolumeClaim`: requests storage from the cluster.
@@ -460,14 +460,14 @@ Dashboard coverage summary:
 Apply the dashboard:
 1) Port-forward Grafana:
 ```
-kubectl port-forward svc/uptimepulse-grafana 3000:3000
+kubectl port-forward svc/iyup-grafana 3000:3000
 ```
 2) Open Grafana and login:
 - URL: `http://localhost:3000`
 - Default credentials: `admin` / `admin` (Grafana will prompt to change)
 3) Add Prometheus as a data source:
 - Connections → Data sources → Add data source → Prometheus
-- URL: `http://uptimepulse-prometheus:9090`
+- URL: `http://iyup-prometheus:9090`
 - Save & Test
 4) Import the dashboard JSON:
 - Dashboards → New → Import
@@ -480,7 +480,7 @@ Grafana Cloud does not scrape a Fly app directly. You need a scraper (Grafana Al
 
 Fly endpoint (ping-agent):
 ```
-https://uptimepulse-ping-agent.fly.dev/metrics
+https://iyup-ping-agent.fly.dev/metrics
 ```
 
 Quick local Alloy setup (Docker):
@@ -488,7 +488,7 @@ Quick local Alloy setup (Docker):
 ```hcl
 prometheus.scrape "ping_agent" {
   targets = [{
-    __address__ = "uptimepulse-ping-agent.fly.dev",
+    __address__ = "iyup-ping-agent.fly.dev",
   }]
   scheme = "https"
   metrics_path = "/metrics"
@@ -525,7 +525,7 @@ If you want always-on scraping from Fly, use the config under `monitoring/alloy-
 - `monitoring/alloy-fly/fly.toml` defines the Fly app.
 
 Typical flow:
-1) Create the app: `fly apps create uptimepulse-alloy`
+1) Create the app: `fly apps create iyup-alloy`
 2) Set secrets: `fly secrets set GRAFANA_USER=... GRAFANA_API_KEY=...`
 3) Deploy from `monitoring/alloy-fly/`: `fly deploy`
 
@@ -560,7 +560,7 @@ These are the actual issues I hit while building the stack:
 ### Resolutions
 - Start Docker Desktop; reset Docker env with `eval $(minikube docker-env -u)` when needed.
 - Build the image inside Minikube (`eval $(minikube -p minikube docker-env)` + `docker build ...`).
-- Use repo root for `helm install uptimepulse ./charts/uptimepulse`.
+- Use repo root for `helm install iyup ./charts/iyup`.
 - Fix template quoting by using single-quoted strings (avoid `\"` in Helm templates).
 - Start Minikube and select the right context (`minikube start`, `kubectl config use-context minikube`).
 - The metrics parser in `services/api-gateway/main.py` was too strict (expected unlabeled counters). Fix by reading label values like `target="..."` and summing `ping_success_total{target="..."}` and `ping_failure_total{target="..."}` per target.
@@ -569,13 +569,13 @@ These are the actual issues I hit while building the stack:
 - Use `strategy: Recreate` for Prometheus/Grafana when using PVCs, then delete old pods so only one holds the lock.
 - Grafana panels may go blank briefly during Prometheus rollouts. Give it ~30s.
 - Keep `monitoring/grafana-dashboard.json` for Grafana import and install Kubernetes resources via Helm.
-- For alerts, check `kubectl logs deploy/uptimepulse-alert-logger` to see raw payloads.
-- If Grafana rollouts keep hanging, set `strategy: Recreate` in `charts/uptimepulse/templates/grafana-deployment.yaml`.
-- If you port-forward the API gateway, use `kubectl port-forward svc/uptimepulse-api-gateway 8080:80` (or set `service.apiGatewayPort: 8080`).
+- For alerts, check `kubectl logs deploy/iyup-alert-logger` to see raw payloads.
+- If Grafana rollouts keep hanging, set `strategy: Recreate` in `charts/iyup/templates/grafana-deployment.yaml`.
+- If you port-forward the API gateway, use `kubectl port-forward svc/iyup-api-gateway 8080:80` (or set `service.apiGatewayPort: 8080`).
 
 ### Verification steps
 - `kubectl logs -l app.kubernetes.io/component=ping-agent --tail=20` shows ping logs and metrics server start line.
-- `kubectl port-forward svc/uptimepulse-ping-agent 18080:8080`
+- `kubectl port-forward svc/iyup-ping-agent 18080:8080`
 - `curl -v http://localhost:18080/metrics` returns `HTTP/1.1 200 OK` and metric output.
 
 ## Rebuild Everything From Scratch
@@ -583,7 +583,7 @@ Full rebuild path (copy/paste friendly).
 
 ### 1) Build images inside Minikube
 ```
-cd /path/to/UpTimePulse
+cd /path/to/iYup
 eval $(minikube -p minikube docker-env)
 docker build -t ping-agent:latest services/ping-agent
 docker build -t api-gateway:latest services/api-gateway
@@ -591,12 +591,12 @@ docker build -t api-gateway:latest services/api-gateway
 
 ### 2) Install or upgrade the Helm chart
 ```
-helm upgrade --install uptimepulse ./charts/uptimepulse
+helm upgrade --install iyup ./charts/iyup
 ```
 
 If you need SMTP credentials, set them via a values override:
 ```
-helm upgrade --install uptimepulse ./charts/uptimepulse \\
+helm upgrade --install iyup ./charts/iyup \\
   --set alert.smtp.user="you@gmail.com" \\
   --set alert.smtp.password="APP_PASSWORD" \\
   --set alert.smtp.from="you@gmail.com" \\
@@ -605,15 +605,15 @@ helm upgrade --install uptimepulse ./charts/uptimepulse \\
 
 Local override file (to make secrets stay out of git):
 ```
-helm upgrade --install uptimepulse ./charts/uptimepulse -f charts/uptimepulse/values.local.yaml
+helm upgrade --install iyup ./charts/iyup -f charts/iyup/values.local.yaml
 ```
-Note: `charts/uptimepulse/values.local.yaml` is git‑ignored on purpose.
+Note: `charts/iyup/values.local.yaml` is git‑ignored on purpose.
 
 Feature toggles (values.yaml):
 ```
 ingress:
   enabled: true
-  host: uptimepulse.local
+  host: iyup.local
 
 hpa:
   enabled: true
@@ -621,29 +621,29 @@ hpa:
 
 Helm sanity checks:
 ```
-helm lint charts/uptimepulse
-helm template uptimepulse ./charts/uptimepulse | kubectl apply --dry-run=client -f -
+helm lint charts/iyup
+helm template iyup ./charts/iyup | kubectl apply --dry-run=client -f -
 ```
 
 ### 3) Restart deployments and wait for readiness
 ```
-kubectl rollout restart deployment uptimepulse-ping-agent
-kubectl rollout restart deployment uptimepulse-api-gateway
-kubectl rollout restart deployment uptimepulse-prometheus
-kubectl rollout restart deployment uptimepulse-grafana
+kubectl rollout restart deployment iyup-ping-agent
+kubectl rollout restart deployment iyup-api-gateway
+kubectl rollout restart deployment iyup-prometheus
+kubectl rollout restart deployment iyup-grafana
 
-kubectl rollout status deployment uptimepulse-ping-agent
-kubectl rollout status deployment uptimepulse-api-gateway
-kubectl rollout status deployment uptimepulse-prometheus
-kubectl rollout status deployment uptimepulse-grafana
+kubectl rollout status deployment iyup-ping-agent
+kubectl rollout status deployment iyup-api-gateway
+kubectl rollout status deployment iyup-prometheus
+kubectl rollout status deployment iyup-grafana
 ```
 
 ### 4) Port-forward and test endpoints
 ```
-kubectl port-forward svc/uptimepulse-ping-agent 18080:8080
-kubectl port-forward svc/uptimepulse-api-gateway 8080:8080
-kubectl port-forward svc/uptimepulse-prometheus 9090:9090
-kubectl port-forward svc/uptimepulse-grafana 3000:3000
+kubectl port-forward svc/iyup-ping-agent 18080:8080
+kubectl port-forward svc/iyup-api-gateway 8080:8080
+kubectl port-forward svc/iyup-prometheus 9090:9090
+kubectl port-forward svc/iyup-grafana 3000:3000
 ```
 
 In separate terminals:
@@ -655,14 +655,14 @@ curl -v http://localhost:8080/uptime-summary
 
 ### 5) Grafana
 - Open `http://localhost:3000`
-- Add Prometheus data source: `http://uptimepulse-prometheus:9090`
+- Add Prometheus data source: `http://iyup-prometheus:9090`
 - Import `monitoring/grafana-dashboard.json`
 
 ## Quick sanity checks
 - Prometheus targets are UP: `http://localhost:9090/targets`
 - Alert rule exists: `http://localhost:9090/rules` (look for `TargetDown`)
 - Alertmanager is reachable: `http://localhost:9093/#/alerts`
-- Alert output shows in logger: `kubectl logs deploy/uptimepulse-alert-logger --tail=50`
+- Alert output shows in logger: `kubectl logs deploy/iyup-alert-logger --tail=50`
 - API works:
   - `curl -v http://localhost:8080/healthz`
   - `curl -v http://localhost:8080/uptime-summary`
@@ -670,10 +670,10 @@ curl -v http://localhost:8080/uptime-summary
 - PVCs are bound: `kubectl get pvc`
 
 ### Trigger an alert (quick test)
-1) Set a bad target in `charts/uptimepulse/values.yaml` (e.g., `https://example.invalid`).
+1) Set a bad target in `charts/iyup/values.yaml` (e.g., `https://example.invalid`).
 2) Apply and wait:
 ```
-helm upgrade --install uptimepulse ./charts/uptimepulse
+helm upgrade --install iyup ./charts/iyup
 ```
 3) Wait 1–2 minutes, then check:
 - `http://localhost:9090/alerts`

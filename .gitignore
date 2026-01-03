@@ -2,7 +2,7 @@
 k8s/alertmanager-secret.yaml
 *.env
 .env
-charts/uptimepulse/values.local.yaml
+charts/iyup/values.local.yaml
 monitoring/alloy.hcl
 
 # OS/editor

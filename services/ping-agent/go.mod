@@ -1,4 +1,4 @@
-module uptimepulse/ping-agent
+module iyup/ping-agent
 
 go 1.23.0
 

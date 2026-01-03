@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-ingress
+  name: {{ include "iyup.fullname" . }}-ingress
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
 spec:
   rules:
     - host: {{ .Values.ingress.host | quote }}
@@ -14,7 +14,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "uptimepulse.fullname" . }}-api-gateway
+                name: {{ include "iyup.fullname" . }}-api-gateway
                 port:
                   number: {{ .Values.service.apiGatewayPort }}
 {{- end }}

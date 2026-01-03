@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-grafana-data
+  name: {{ include "iyup.fullname" . }}-grafana-data
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce

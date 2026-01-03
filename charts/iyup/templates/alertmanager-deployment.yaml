@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-alertmanager
+  name: {{ include "iyup.fullname" . }}-alertmanager
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
     app.kubernetes.io/component: alertmanager
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      {{- include "iyup.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: alertmanager
   template:
     metadata:
       labels:
-        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        {{- include "iyup.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: alertmanager
     spec:
       containers:
@@ -29,8 +29,8 @@ spec:
               mountPath: /etc/alertmanager
           envFrom:
             - secretRef:
-                name: {{ include "uptimepulse.fullname" . }}-alertmanager-smtp
+                name: {{ include "iyup.fullname" . }}-alertmanager-smtp
       volumes:
         - name: config
           configMap:
-            name: {{ include "uptimepulse.fullname" . }}-alertmanager-config
+            name: {{ include "iyup.fullname" . }}-alertmanager-config

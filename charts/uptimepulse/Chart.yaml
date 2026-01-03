@@ -1,4 +1,0 @@
-apiVersion: v2
-name: uptimepulse
-version: 0.1.0
-description: Uptime monitoring system with Kubernetes, Prometheus, and FastAPI

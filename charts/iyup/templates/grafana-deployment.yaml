@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "uptimepulse.fullname" . }}-grafana
+  name: {{ include "iyup.fullname" . }}-grafana
   labels:
-    {{- include "uptimepulse.labels" . | nindent 4 }}
+    {{- include "iyup.labels" . | nindent 4 }}
     app.kubernetes.io/component: grafana
 spec:
   strategy:
@@ -11,12 +11,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "uptimepulse.selectorLabels" . | nindent 6 }}
+      {{- include "iyup.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: grafana
   template:
     metadata:
       labels:
-        {{- include "uptimepulse.selectorLabels" . | nindent 8 }}
+        {{- include "iyup.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: grafana
     spec:
       containers:
@@ -30,4 +30,4 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "uptimepulse.fullname" . }}-grafana-data
+            claimName: {{ include "iyup.fullname" . }}-grafana-data
