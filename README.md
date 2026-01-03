@@ -5,24 +5,30 @@
 ![Grafana](https://img.shields.io/badge/Grafana-10.3-informational)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green)
 
-Lightweight uptime + latency stack for learning Kubernetes, Prometheus, and real‑world SRE workflows — no cloud lock‑in, no managed magic.
+Uptime + latency stack I built to learn Kubernetes, Prometheus, and Grafana by wiring a real-ish system end to end. No managed services required.
 
 ## Table of Contents
 
 - [Architecture overview](#architecture-overview)
 - [Architecture & template map (detailed)](ARCHITECTURE.md)
 - [Project layout](#project-layout)
+- [Prerequisites](#prerequisites)
 - [Quickstart (local Docker)](#quickstart-local-docker)
 - [Quickstart (Minikube)](#quickstart-minikube)
 - [API Gateway Quickstart](#api-gateway-fastapi-quickstart)
 - [API Endpoints](#api-endpoints-what-they-actually-do)
+- [Local Dev (API Gateway only)](#local-dev-api-gateway-only)
+- [Helm Values Reference (common)](#helm-values-reference-common)
+- [Secrets and SMTP (Alertmanager)](#secrets-and-smtp-alertmanager)
 - [Command Notes](#command-notes)
 - [Flag Cheat Sheet](#flag-cheat-sheet)
 - [Why These Pieces Exist](#why-these-pieces-exist)
 - [Metrics Cheat Sheet](#metrics-cheat-sheet)
 - [Grafana Dashboard](#grafana-dashboard-what-it-shows-and-how-to-wire-it-up)
+- [Fly Alloy Scraper (Grafana Cloud)](#fly-alloy-scraper-grafana-cloud)
 - [Troubleshooting](#troubleshooting-notes)
 - [Rebuild From Scratch](#rebuild-everything-from-scratch)
+- [Testing](#testing)
 - [What I Learned](#what-i-learned-and-why-this-exists)
 
 ## Architecture overview
@@ -33,75 +39,20 @@ Helm renders the chart; `ping-agent` reads its target list from a ConfigMap (`/c
 Data path: `ping-agent` → `Prometheus` → `Grafana`  
 API path: `client` → `api-gateway` → `ping-agent` metrics
 
-This diagram is the deployment flow (Helm → YAML → cluster → pods). Runtime data flow and the template map live in `ARCHITECTURE.md`.
+Full diagrams and a template-to-resource map live in `ARCHITECTURE.md`.
 
 ```mermaid
-flowchart TB
-  linkStyle default stroke:#475569,stroke-width:2px
-  classDef group fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-  classDef deploy fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#0f172a
-  classDef config fill:#e0f2fe,stroke:#0369a1,stroke-width:2px,color:#0f172a
-  classDef service fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#0f172a
-  classDef monitoring fill:#fef9c3,stroke:#b45309,stroke-width:2px,color:#0f172a
-  classDef alerting fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#0f172a
-
-  subgraph Deploy["Deployment Flow"]
-    helm[Helm chart<br/>templates + values]
-    k8sYAML[Kubernetes YAML<br/>manifests]
-    k8sCluster[Kubernetes Cluster<br/>Minikube]
-    pods[Running Pods<br/>Docker containers]
-    helm -->|"helm install<br/>renders templates"| k8sYAML
-    k8sYAML -->|"kubectl apply<br/>sends to API"| k8sCluster
-    k8sCluster -->|"controllers create"| pods
-  end
-
-  subgraph Config["Configuration"]
-    targets[ConfigMap<br/>targets.json]
-  end
-
-  subgraph Services["Application Services"]
-    ping[ping-agent<br/>Pings URLs]
-    api[api-gateway<br/>REST API]
-    metrics[ping-agent<br/>/metrics endpoint]
-  end
-
-  subgraph Monitoring["Monitoring"]
-    prom[Prometheus<br/>Scrapes & stores]
-    grafana[Grafana<br/>Dashboards]
-  end
-
-  subgraph Alerting["Alerting"]
-    alert[Alertmanager<br/>Routes alerts]
-    logger[alert-logger<br/>Logs alerts]
-  end
-
-  subgraph Client["Client"]
-    client[Client]
-  end
-
-  targets -->|"mounted as volume"| ping
-  ping -->|"exposes"| metrics
-  client -->|"HTTP request"| api
-  api -->|"reads metrics"| metrics
-  prom -->|"scrapes"| metrics
-  prom -->|"scrapes"| api
-  prom -->|"queries data"| grafana
-  prom -->|"sends alerts"| alert
-  alert -->|"webhook"| logger
-
-  pods -.->|"contains"| ping
-  pods -.->|"contains"| api
-  pods -.->|"contains"| prom
-  pods -.->|"contains"| grafana
-  pods -.->|"contains"| alert
-  pods -.->|"contains"| logger
-
-  class Deploy,Config,Services,Monitoring,Alerting,Client group
-  class helm,k8sYAML,k8sCluster,pods deploy
-  class targets config
-  class ping,api,metrics service
-  class prom,grafana monitoring
-  class alert,logger alerting
+flowchart LR
+  helm[Helm chart] --> k8s[Kubernetes resources]
+  targets[ConfigMap targets.json] --> ping
+  client[Client] --> api[api-gateway]
+  api -->|reads metrics| metrics[ping-agent /metrics]
+  ping[ping-agent] --> metrics
+  prom[Prometheus] --> grafana[Grafana]
+  prom -->|scrape| metrics
+  prom -->|scrape| api
+  alert[Alertmanager] --> logger[alert-logger]
+  prom -->|alerts| alert
 ```
 
 ## Project layout
@@ -112,6 +63,16 @@ flowchart TB
 - `monitoring/` contains the Grafana dashboard JSON.
 - `terraform/` contains infrastructure as code to provision cloud resources.
 - `docs/` removed (the root `README.md` is the single source of truth).
+
+## Prerequisites
+Local tooling used by this repo:
+
+- Docker (Desktop or Engine)
+- kubectl
+- Helm
+- Minikube (for the local cluster path)
+- Go (for ping-agent dev/tests)
+- Python 3 (for api-gateway dev/tests)
 
 ## Quickstart (local Docker)
 Run ping‑agent locally:
@@ -179,6 +140,50 @@ Endpoints from `api-gateway`:
 - `GET /targets` → list monitored URLs (from `PING_TARGET_URLS`).
 - `GET /uptime-summary` → success/failure counts + availability %.
 - `GET /metrics` → Prometheus metrics for api‑gateway itself.
+
+## Local Dev (API Gateway only)
+Run the FastAPI gateway outside Kubernetes:
+
+```
+cd services/api-gateway
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export PING_AGENT_METRICS_URL="http://localhost:18080/metrics"
+export PING_TARGET_URLS="https://example.com,https://example.org"
+uvicorn main:app --host 0.0.0.0 --port 8080
+```
+
+In another terminal, run the ping-agent (or port-forward it from Minikube) so `PING_AGENT_METRICS_URL` resolves.
+
+## Helm Values Reference (common)
+These are the values you are most likely to tweak:
+
+- `targets` (list of URLs) used by ping-agent and api-gateway
+- `service.apiGatewayPort` (default `80`) for the Service port
+- `ingress.enabled`, `ingress.host` to expose the API gateway
+- `hpa.enabled`, `hpa.minReplicas`, `hpa.maxReplicas` for scaling
+- `alert.smtp.*` (user, password, from, to) for Alertmanager email
+
+See `charts/uptimepulse/values.yaml` for the full list.
+
+## Secrets and SMTP (Alertmanager)
+SMTP credentials are provided via Helm values (preferred) or a local values file.
+
+Example `values.local.yaml` (do not commit):
+```
+alert:
+  smtp:
+    user: "you@gmail.com"
+    password: "APP_PASSWORD"
+    from: "you@gmail.com"
+    to: "alerts@example.com"
+```
+
+Apply with:
+```
+helm upgrade --install uptimepulse ./charts/uptimepulse -f charts/uptimepulse/values.local.yaml
+```
 
 ## Command Notes
 Short explanations of the commands used above.
@@ -470,6 +475,60 @@ kubectl port-forward svc/uptimepulse-grafana 3000:3000
 - Select the Prometheus data source
 - Import
 
+## Grafana Cloud (scrape Fly metrics)
+Grafana Cloud does not scrape a Fly app directly. You need a scraper (Grafana Alloy or Prometheus) to pull `/metrics` and `remote_write` to Grafana Cloud.
+
+Fly endpoint (ping-agent):
+```
+https://uptimepulse-ping-agent.fly.dev/metrics
+```
+
+Quick local Alloy setup (Docker):
+1) Create `alloy.hcl`:
+```hcl
+prometheus.scrape "ping_agent" {
+  targets = [{
+    __address__ = "uptimepulse-ping-agent.fly.dev",
+  }]
+  scheme = "https"
+  metrics_path = "/metrics"
+
+  forward_to = [prometheus.remote_write.metrics_hosted_prometheus.receiver]
+}
+
+prometheus.remote_write "metrics_hosted_prometheus" {
+  endpoint {
+    name = "hosted-prometheus"
+    url  = "https://prometheus-prod-52-prod-ap-southeast-2.grafana.net/api/prom/push"
+
+    basic_auth {
+      username = "YOUR_USERNAME"
+      password = "YOUR_API_KEY"
+    }
+  }
+}
+```
+
+2) Run Alloy:
+```
+docker run --rm -v "$PWD/alloy.hcl:/etc/alloy/config.hcl" grafana/alloy:latest run /etc/alloy/config.hcl
+```
+
+Notes:
+- Keep tokens out of git. Treat anything shown in a screenshot as compromised.
+- For always-on scraping, run Alloy as a small Fly app and store the token in Fly secrets.
+
+## Fly Alloy Scraper (Grafana Cloud)
+If you want always-on scraping from Fly, use the config under `monitoring/alloy-fly/`.
+
+- `monitoring/alloy-fly/alloy.hcl` is the Fly app config.
+- `monitoring/alloy-fly/fly.toml` defines the Fly app.
+
+Typical flow:
+1) Create the app: `fly apps create uptimepulse-alloy`
+2) Set secrets: `fly secrets set GRAFANA_USER=... GRAFANA_API_KEY=...`
+3) Deploy from `monitoring/alloy-fly/`: `fly deploy`
+
 ## Screenshots (placeholders)
 Add screenshots here later:
 - Architecture diagram (simple box/arrow flow).
@@ -486,6 +545,7 @@ If you redeploy the Pods, your metrics history and Grafana settings should remai
 Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:8080/metrics`, and verify it with `curl`.
 
 ### Problems observed
+These are the actual issues I hit while building the stack:
 - Docker couldn't connect to the daemon (Docker Desktop not running or shell pointed at Minikube's daemon).
 - `ErrImageNeverPull` in Kubernetes (image not available inside Minikube).
 - Helm install failed from the wrong working directory (chart path not found).
@@ -519,11 +579,11 @@ Run the ping-agent in Docker and in Minikube, expose Prometheus metrics on `:808
 - `curl -v http://localhost:18080/metrics` returns `HTTP/1.1 200 OK` and metric output.
 
 ## Rebuild Everything From Scratch
-This is a complete, copy‑paste path to rebuild and validate everything.
+Full rebuild path (copy/paste friendly).
 
 ### 1) Build images inside Minikube
 ```
-cd /Users/muhammadfattah/Documents/Projects/Git/Active/UpTimePulse
+cd /path/to/UpTimePulse
 eval $(minikube -p minikube docker-env)
 docker build -t ping-agent:latest services/ping-agent
 docker build -t api-gateway:latest services/api-gateway
@@ -620,4 +680,18 @@ helm upgrade --install uptimepulse ./charts/uptimepulse
 - `kubectl logs deploy/alert-logger --tail=50`
 
 ## What I Learned (and Why This Exists)
-I built this as a fast, messy crash course in the stuff you only learn once it breaks: container builds inside Minikube, Prometheus scraping, Grafana dashboards, and *why rollouts + PVCs can be a pain*. It’s a real‑ish SRE toy stack, not a polished product. I’m keeping it around because it makes failure modes visible and repeatable.
+I built this as a crash course in the stuff that only sticks once it breaks: container builds inside Minikube, Prometheus scraping, Grafana dashboards, and *why rollouts + PVCs can be a pain*. It’s a learning stack, not a product, and I’m keeping it around because the failure modes are visible and repeatable.
+
+## Testing
+Run the same checks used in CI:
+
+```
+# Go
+cd services/ping-agent
+go test ./...
+
+# Python
+cd services/api-gateway
+python3 -m py_compile main.py
+python3 -m unittest
+```
