@@ -1,7 +1,7 @@
 nameOverride: ""
 fullnameOverride: ""
 
-pingTargets:
+pingTargets: # rendered into PING_TARGET_URLS for both ping-agent and api-gateway
   - https://google.com
   - https://github.com
 
