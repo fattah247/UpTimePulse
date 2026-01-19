@@ -4,29 +4,322 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>iYup Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
+      :root {
+        --bg: #f4efe8;
+        --bg-accent: #e8efe3;
+        --ink: #1a1d1c;
+        --muted: #5a625d;
+        --primary: #0f3d2e;
+        --secondary: #c95a2b;
+        --card: #ffffff;
+        --border: #1a1d1c;
+        --chip: #f4d7c4;
+        --shadow: rgba(26, 29, 28, 0.2);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
-        font-family: "Trebuchet MS", Verdana, sans-serif;
         margin: 0;
-        padding: 2rem;
-        background: #f2f0e9;
-        color: #2b2b2b;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: radial-gradient(circle at top left, #ffffff 0%, var(--bg) 40%, var(--bg-accent) 100%);
       }
-      .card {
-        max-width: 640px;
-        padding: 2rem;
-        border: 2px solid #2b2b2b;
-        background: #fff8dc;
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: linear-gradient(120deg, rgba(201, 90, 43, 0.08), rgba(15, 61, 46, 0.08));
+        pointer-events: none;
+        z-index: -1;
       }
+
+      .shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem 4rem;
+      }
+
+      header {
+        display: grid;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+      }
+
+      .hero {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
       h1 {
-        margin-top: 0;
+        font-size: clamp(2.4rem, 4vw, 3.6rem);
+        letter-spacing: -0.03em;
+        margin: 0;
+      }
+
+      .subtitle {
+        font-size: 1.05rem;
+        color: var(--muted);
+        max-width: 56ch;
+        margin: 0;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .chip {
+        background: var(--chip);
+        border: 1.5px solid var(--border);
+        padding: 0.45rem 0.8rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+
+      .card {
+        background: var(--card);
+        border: 2px solid var(--border);
+        padding: 1.5rem;
+        box-shadow: 6px 6px 0 var(--shadow);
+      }
+
+      .card h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.25rem;
+      }
+
+      .label {
+        font-family: "IBM Plex Mono", "Courier New", monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.7rem;
+        color: var(--secondary);
+        margin-bottom: 0.5rem;
+      }
+
+      .list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 0.4rem;
+        color: var(--muted);
+      }
+
+      .list li span {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      .mono {
+        font-family: "IBM Plex Mono", "Courier New", monospace;
+        font-size: 0.9rem;
+      }
+
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        align-items: center;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .flow span {
+        padding: 0.35rem 0.6rem;
+        border: 1.5px solid var(--border);
+        background: #f6f2ea;
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+
+      .cta a {
+        text-decoration: none;
+        color: var(--ink);
+        border: 2px solid var(--border);
+        padding: 0.6rem 0.9rem;
+        background: #fff1da;
+        font-weight: 600;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(12px);
+        animation: rise 0.8s ease forwards;
+      }
+
+      .reveal[data-delay="1"] {
+        animation-delay: 0.1s;
+      }
+      .reveal[data-delay="2"] {
+        animation-delay: 0.2s;
+      }
+      .reveal[data-delay="3"] {
+        animation-delay: 0.3s;
+      }
+      .reveal[data-delay="4"] {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes rise {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          padding: 2rem 1.25rem 3rem;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>iYup Dashboard</h1>
-      <p>This is a placeholder UI. Replace with your real dashboard.</p>
+    <div class="shell">
+      <header class="reveal">
+        <div class="hero">
+          <div class="label">iYup status board</div>
+          <h1>Uptime and latency telemetry, end to end.</h1>
+          <p class="subtitle">
+            This dashboard mirrors the full iYup stack: ping-agent metrics, API gateway
+            summaries, Prometheus storage, Grafana dashboards, and Alertmanager routing.
+          </p>
+        </div>
+        <div class="chips">
+          <div class="chip">Ping Agent</div>
+          <div class="chip">API Gateway</div>
+          <div class="chip">Prometheus</div>
+          <div class="chip">Grafana</div>
+          <div class="chip">Alertmanager</div>
+        </div>
+      </header>
+
+      <section class="grid">
+        <div class="card reveal" data-delay="1">
+          <div class="label">Flow</div>
+          <h2>Data + API paths</h2>
+          <div class="flow">
+            <span>ping-agent</span>
+            <span>Prometheus</span>
+            <span>Grafana</span>
+          </div>
+          <div class="flow" style="margin-top: 0.6rem">
+            <span>client</span>
+            <span>api-gateway</span>
+            <span>ping-agent /metrics</span>
+          </div>
+        </div>
+
+        <div class="card reveal" data-delay="2">
+          <div class="label">Targets</div>
+          <h2>Single source of truth</h2>
+          <ul class="list">
+            <li><span>PING_TARGET_URLS</span> defines all monitored URLs.</li>
+            <li>Used by ping-agent and api-gateway.</li>
+            <li>Default: google.com, github.com.</li>
+          </ul>
+        </div>
+
+        <div class="card reveal" data-delay="3">
+          <div class="label">Endpoints</div>
+          <h2>API surface</h2>
+          <ul class="list mono">
+            <li>GET /healthz</li>
+            <li>GET /targets</li>
+            <li>GET /uptime-summary</li>
+            <li>GET /uptime-summary-windowed?window=5m</li>
+            <li>GET /metrics</li>
+          </ul>
+        </div>
+
+        <div class="card reveal" data-delay="4">
+          <div class="label">Metrics</div>
+          <h2>Prometheus signals</h2>
+          <ul class="list">
+            <li><span>ping_success_total</span> and <span>ping_failure_total</span></li>
+            <li><span>ping_latency_seconds</span> histogram</li>
+            <li>api_gateway_requests_total</li>
+            <li>api_gateway_request_duration_seconds</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="grid" style="margin-top: 1.5rem">
+        <div class="card reveal" data-delay="1">
+          <div class="label">Runtime knobs</div>
+          <h2>Ping agent controls</h2>
+          <ul class="list mono">
+            <li>PING_INTERVAL_SECONDS</li>
+            <li>PING_CONCURRENCY</li>
+            <li>PING_BODY_MAX_BYTES</li>
+            <li>PING_HTTP_METHOD</li>
+            <li>PING_RANGE_REQUEST</li>
+          </ul>
+        </div>
+
+        <div class="card reveal" data-delay="2">
+          <div class="label">Retention</div>
+          <h2>Prometheus storage</h2>
+          <ul class="list">
+            <li><span>14d</span> retention</li>
+            <li><span>5Gi</span> PVC default size</li>
+            <li>Recreate strategy for PVC-bound pods</li>
+          </ul>
+        </div>
+
+        <div class="card reveal" data-delay="3">
+          <div class="label">Alerting</div>
+          <h2>TargetDown rule</h2>
+          <ul class="list">
+            <li>Increase in ping_failure_total triggers alert</li>
+            <li>Alertmanager routes to alert-logger</li>
+            <li>SMTP credentials via values override</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card reveal" data-delay="4" style="margin-top: 1.5rem">
+        <div class="label">Quick checks</div>
+        <h2>Endpoints to verify</h2>
+        <ul class="list mono">
+          <li>curl http://localhost:8081/healthz</li>
+          <li>curl http://localhost:8081/uptime-summary</li>
+          <li>curl http://localhost:9090/targets</li>
+          <li>kubectl port-forward svc/iyup-ping-agent 18080:8080</li>
+          <li>kubectl port-forward svc/iyup-grafana 3000:3000</li>
+        </ul>
+        <div class="cta">
+          <a href="http://localhost:3000" target="_blank" rel="noreferrer">Open Grafana</a>
+          <a href="http://localhost:9090" target="_blank" rel="noreferrer">Open Prometheus</a>
+        </div>
+      </section>
     </div>
   </body>
 </html>
