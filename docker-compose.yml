@@ -1,0 +1,90 @@
+services:
+  ping-agent:
+    build: services/ping-agent
+    environment:
+      - PING_TARGET_URLS=${PING_TARGET_URLS:-https://google.com,https://github.com}
+      - PING_INTERVAL_SECONDS=${PING_INTERVAL_SECONDS:-30}
+      - PING_CONCURRENCY=${PING_CONCURRENCY:-5}
+      - PING_RETRY_COUNT=${PING_RETRY_COUNT:-2}
+      - PING_HTTP_METHOD=${PING_HTTP_METHOD:-GET}
+      - PING_RANGE_REQUEST=${PING_RANGE_REQUEST:-true}
+      - PING_REGION=${PING_REGION:-}
+    ports:
+      - "18080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  api-gateway:
+    build: services/api-gateway
+    environment:
+      - PING_AGENT_METRICS_URL=http://ping-agent:8080/metrics
+      - PING_TARGET_URLS=${PING_TARGET_URLS:-https://google.com,https://github.com}
+      - PROMETHEUS_URL=http://prometheus:9090
+      - PROMETHEUS_QUERY_CACHE_SECONDS=${PROMETHEUS_QUERY_CACHE_SECONDS:-15}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    ports:
+      - "8080:8080"
+    depends_on:
+      ping-agent:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/alert.rules.yml:/etc/prometheus/rules/alert.rules.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-14d}"
+    ports:
+      - "9090:9090"
+    depends_on:
+      ping-agent:
+        condition: service_healthy
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:latest
+    volumes:
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:

@@ -1,0 +1,11 @@
+groups:
+  - name: ping-agent.rules
+    rules:
+      - alert: TargetDown
+        expr: "increase(ping_failure_total[1m]) > 2"
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target {{ $labels.target }} is down"
+          description: "{{ $labels.target }} has had more than 2 failures in the last minute."
