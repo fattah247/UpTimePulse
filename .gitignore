@@ -124,6 +124,9 @@ reliability_test_report.json
 *.log
 logs/
 
+# Claude Code
+.claude/
+
 # Local development
 local/
 tmp/

@@ -78,6 +78,30 @@ curl http://localhost:8080/healthz
 curl http://localhost:8080/uptime-summary
 ```
 
+## Updating to Latest Code
+
+When you've made code changes and want to update the running services:
+
+```bash
+# 1. Rebuild images with latest code
+eval $(minikube -p minikube docker-env)
+docker build -t ping-agent:latest services/ping-agent
+docker build -t api-gateway:latest services/api-gateway
+
+# 2. Restart services to use new images
+kubectl rollout restart deployment iyup-ping-agent
+kubectl rollout restart deployment iyup-api-gateway
+
+# 3. Wait for readiness
+kubectl rollout status deployment iyup-ping-agent
+kubectl rollout status deployment iyup-api-gateway
+
+# 4. Wait 15-30 seconds for Prometheus to scrape new metrics
+# Grafana will automatically show the new data
+```
+
+See [Deployment Guide](DEPLOYMENT.md) for detailed update instructions.
+
 ## Option 3: Local Development (API Gateway)
 
 Run the FastAPI gateway outside Kubernetes:

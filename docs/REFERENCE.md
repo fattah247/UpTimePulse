@@ -13,6 +13,16 @@ Quick reference for commands, flags, and cheat sheets used in iYup.
 - `helm upgrade --install iyup ./charts/iyup` - Re-applies chart changes
 - `kubectl port-forward svc/iyup-ping-agent 18080:8080` - Tunnels a Service port to your machine
 
+### Utility Scripts
+
+- `./scripts/update_stack.sh` - Update stack with latest codebase
+- `python3 scripts/validate_prometheus_data.py` - Validate data quality (check for issues)
+- `./scripts/validate_and_fix.sh` - Iterative validation with auto-fix (run until clean)
+- `python3 scripts/inspect_prometheus_data.py` - Inspect raw Prometheus data (what Grafana queries)
+- `./scripts/inspect_prometheus_data.sh` - Same as above (bash version)
+- `python3 scripts/reliability_test.py` - Long-running reliability test
+- `./scripts/start_services_for_testing.sh` - Start services locally for testing
+
 ### Docker
 
 - `docker build -t ping-agent:dev .` - Builds and tags an image from the current directory

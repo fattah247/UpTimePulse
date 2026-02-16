@@ -2,9 +2,137 @@
 
 Complete guide to setting up and using Grafana dashboards with iYup.
 
-## Overview
+## Getting Latest Data from Updated Codebase
 
-Grafana dashboards are JSON documents that define panels, queries, and visualizations. The iYup project includes a pre-configured dashboard at `monitoring/grafana-dashboard.json`.
+When you've updated the codebase and want Grafana to show the latest metrics:
+
+### Quick Update Process
+
+```bash
+# 1. Rebuild images with latest code
+eval $(minikube -p minikube docker-env)  # If using Minikube
+docker build -t ping-agent:latest services/ping-agent
+docker build -t api-gateway:latest services/api-gateway
+
+# 2. Restart services to use new images
+kubectl rollout restart deployment iyup-ping-agent
+kubectl rollout restart deployment iyup-api-gateway
+
+# 3. Wait for services to be ready
+kubectl rollout status deployment iyup-ping-agent
+kubectl rollout status deployment iyup-api-gateway
+
+# 4. Wait 15-30 seconds for Prometheus to scrape new metrics
+# Grafana will automatically refresh and show new data
+```
+
+**Important Notes:**
+- **No need to restart Grafana** - It automatically queries Prometheus for latest data
+- **No need to restart Prometheus** - It automatically scrapes the updated services
+- **Wait 15-30 seconds** after service restart for Prometheus to scrape and Grafana to refresh
+- **Prometheus scrapes every 15 seconds** by default, so new metrics appear quickly
+
+### Verify Latest Data in Grafana
+
+1. **Inspect Raw Prometheus Data (Recommended):**
+   
+   See the actual data that Grafana queries, not through Grafana UI:
+   
+   ```bash
+   # Port-forward Prometheus first
+   kubectl port-forward svc/iyup-prometheus 9090:9090
+   
+   # Run inspection script (shows all Grafana queries)
+   python3 scripts/inspect_prometheus_data.py
+   # OR
+   ./scripts/inspect_prometheus_data.sh
+   ```
+   
+   This script queries all the same PromQL queries that Grafana uses and shows:
+   - Raw metric values
+   - Calculated values (rates, increases, percentages)
+   - Target health status
+   - Any data issues or missing metrics
+   
+   **This is the best way to verify data correctness before it reaches Grafana!**
+
+2. **Check Prometheus directly:**
+   ```bash
+   # Port-forward Prometheus
+   kubectl port-forward svc/iyup-prometheus 9090:9090
+   
+   # Query for latest metrics
+   curl "http://localhost:9090/api/v1/query?query=ping_success_total"
+   
+   # Check targets are UP
+   open http://localhost:9090/targets
+   ```
+
+3. **Check Grafana dashboard:**
+   - Port-forward Grafana: `kubectl port-forward svc/iyup-grafana 3000:3000`
+   - Open `http://localhost:3000`
+   - Refresh the dashboard (or wait for auto-refresh)
+   - Check time range is set to "Last 5 minutes" or "Last 1 hour"
+
+4. **Verify new features are working:**
+   ```bash
+   # Test API gateway with latest code
+   curl http://localhost:8080/uptime-summary | jq
+   
+   # Check ping-agent metrics
+   curl http://localhost:18080/metrics | grep ping_success_total
+   ```
+
+## Restarting Grafana
+
+If Grafana is already running and you need to restart it:
+
+### Option 1: Rollout Restart (Recommended)
+
+```bash
+# Restart Grafana deployment
+kubectl rollout restart deployment iyup-grafana
+
+# Wait for it to be ready
+kubectl rollout status deployment iyup-grafana
+```
+
+This gracefully restarts Grafana while preserving all dashboards and settings (stored in PVC).
+
+### Option 2: Delete Pod (Force Restart)
+
+```bash
+# Get the pod name
+kubectl get pods -l app.kubernetes.io/component=grafana
+
+# Delete the pod (Kubernetes will automatically recreate it)
+kubectl delete pod <grafana-pod-name>
+```
+
+### Option 3: Scale Down and Up
+
+```bash
+# Scale down to 0
+kubectl scale deployment iyup-grafana --replicas=0
+
+# Wait a moment, then scale back up
+kubectl scale deployment iyup-grafana --replicas=1
+
+# Check status
+kubectl rollout status deployment iyup-grafana
+```
+
+### Option 4: Helm Upgrade (If You Changed Config)
+
+```bash
+# If you modified Helm values, upgrade the release
+helm upgrade iyup ./charts/iyup
+
+# This will restart Grafana if the deployment changed
+kubectl rollout status deployment iyup-grafana
+```
+
+**Note:** All methods preserve your dashboards and settings since they're stored in a PersistentVolumeClaim (PVC).
 
 ## Dashboard Panels
 
@@ -191,6 +319,88 @@ Grafana panels may go blank briefly during Prometheus rollouts. Give it ~30 seco
 2. Verify data source URL: `http://iyup-prometheus:9090`
 3. Check time range in Grafana (top right)
 4. Verify metrics exist: `curl http://localhost:9090/api/v1/query?query=ping_success_total`
+
+### Grafana Won't Start
+
+```bash
+# Check pod status
+kubectl get pods -l app.kubernetes.io/component=grafana
+
+# Check pod logs
+kubectl logs -l app.kubernetes.io/component=grafana
+
+# Check PVC status
+kubectl get pvc | grep grafana
+
+# Check events
+kubectl get events --sort-by='.lastTimestamp' | grep grafana
+```
+
+### Not Seeing Latest Metrics
+
+If Grafana isn't showing the latest data after code updates:
+
+1. **Verify services are restarted:**
+   ```bash
+   kubectl get pods -l app.kubernetes.io/component=ping-agent
+   kubectl get pods -l app.kubernetes.io/component=api-gateway
+   ```
+
+2. **Check Prometheus is scraping:**
+   ```bash
+   # Port-forward Prometheus
+   kubectl port-forward svc/iyup-prometheus 9090:9090
+   
+   # Check targets are UP
+   open http://localhost:9090/targets
+   ```
+
+3. **Wait for scrape cycle:**
+   - Prometheus scrapes every 15 seconds
+   - Wait 30-60 seconds after service restart
+   - Refresh Grafana dashboard
+
+4. **Check time range:**
+   - Make sure Grafana time range includes "now"
+   - Try "Last 5 minutes" or "Last 1 hour"
+
+## Inspecting Raw Prometheus Data
+
+To see the actual data that Grafana queries (not through Grafana UI), use the inspection script:
+
+```bash
+# Port-forward Prometheus first
+kubectl port-forward svc/iyup-prometheus 9090:9090
+
+# Run inspection (shows all Grafana queries and their results)
+python3 scripts/inspect_prometheus_data.py
+# OR
+./scripts/inspect_prometheus_data.sh
+```
+
+This script:
+- ✅ Queries all the same PromQL queries that Grafana uses
+- ✅ Shows raw metric values and calculated values
+- ✅ Checks target health status
+- ✅ Identifies missing metrics or data issues
+- ✅ Displays results in a readable format
+
+**Use this to verify data correctness before it reaches Grafana!**
+
+### Manual Prometheus Queries
+
+You can also query Prometheus directly:
+
+```bash
+# Query a specific metric
+curl "http://localhost:9090/api/v1/query?query=ping_success_total"
+
+# Query with time range
+curl "http://localhost:9090/api/v1/query_range?query=rate(ping_success_total[1m])&start=$(date -d '5 minutes ago' +%s)&end=$(date +%s)&step=15"
+
+# Use Prometheus UI
+open http://localhost:9090/graph
+```
 
 ## Related Documentation
 

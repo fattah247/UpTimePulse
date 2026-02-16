@@ -2,6 +2,68 @@
 
 Complete guide to deploying and configuring iYup.
 
+## Updating to Latest Codebase
+
+When you've updated the code and want Grafana to reflect the latest changes:
+
+### Complete Update Process
+
+```bash
+# 1. Point Docker at Minikube (if using Minikube)
+eval $(minikube -p minikube docker-env)
+
+# 2. Rebuild images with latest code
+docker build -t ping-agent:latest services/ping-agent
+docker build -t api-gateway:latest services/api-gateway
+
+# 3. Restart deployments to use new images
+kubectl rollout restart deployment iyup-ping-agent
+kubectl rollout restart deployment iyup-api-gateway
+
+# 4. Wait for services to be ready
+kubectl rollout status deployment iyup-ping-agent
+kubectl rollout status deployment iyup-api-gateway
+
+# 5. Verify new code is running
+kubectl logs -l app.kubernetes.io/component=ping-agent --tail=20
+kubectl logs -l app.kubernetes.io/component=api-gateway --tail=20
+```
+
+**Important:** After restarting ping-agent and api-gateway:
+- Prometheus will automatically scrape the new metrics (no restart needed)
+- Grafana will automatically show the new data (no restart needed)
+- Wait 15-30 seconds for Prometheus to scrape and Grafana to refresh
+
+### Force Image Pull (If Images Are Cached)
+
+If Kubernetes is using cached images, force it to use the newly built ones:
+
+```bash
+# Delete pods to force recreation with new images
+kubectl delete pod -l app.kubernetes.io/component=ping-agent
+kubectl delete pod -l app.kubernetes.io/component=api-gateway
+
+# Or set imagePullPolicy to Always (temporary)
+kubectl set image deployment/iyup-ping-agent ping-agent=ping-agent:latest
+kubectl set image deployment/iyup-api-gateway api-gateway=api-gateway:latest
+```
+
+### Verify Latest Code Is Active
+
+```bash
+# Check ping-agent is using latest code
+curl http://localhost:18080/metrics | grep -i "ping_success_total\|ping_failure_total"
+
+# Check API gateway has latest features
+curl http://localhost:8080/uptime-summary | jq
+
+# Check Prometheus is scraping new metrics
+open http://localhost:9090/targets  # Should show UP
+
+# Check Grafana shows new data (wait 15-30s after restart)
+open http://localhost:3000
+```
+
 ## Helm Values Reference
 
 ### Common Configuration
