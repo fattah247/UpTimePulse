@@ -8,11 +8,17 @@ pingTargets: # rendered into PING_TARGET_URLS for both ping-agent and api-gatewa
 image:
   pingAgent: ping-agent:latest
   apiGateway: api-gateway:latest
-  dashboardUi: dashboard-ui:latest
   prometheus: prom/prometheus:v2.54.1
   grafana: grafana/grafana:latest
   alertmanager: prom/alertmanager:v0.27.0
   alertLogger: mendhak/http-https-echo:36
+
+pingAgent:
+  intervalSeconds: 30
+  concurrency: 5
+  retryCount: 2
+  httpMethod: GET
+  rangeRequest: true
 
 service:
   apiGatewayPort: 80

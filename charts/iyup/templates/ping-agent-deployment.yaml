@@ -26,6 +26,16 @@ spec:
         env:
           - name: PING_TARGET_URLS
             value: '{{ join "," .Values.pingTargets }}'
+          - name: PING_INTERVAL_SECONDS
+            value: {{ .Values.pingAgent.intervalSeconds | quote }}
+          - name: PING_CONCURRENCY
+            value: {{ .Values.pingAgent.concurrency | quote }}
+          - name: PING_RETRY_COUNT
+            value: {{ .Values.pingAgent.retryCount | quote }}
+          - name: PING_HTTP_METHOD
+            value: {{ .Values.pingAgent.httpMethod | quote }}
+          - name: PING_RANGE_REQUEST
+            value: {{ .Values.pingAgent.rangeRequest | quote }}
         livenessProbe:
           httpGet:
             path: /healthz
