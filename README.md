@@ -99,20 +99,26 @@ Detailed Phase 0 evidence is recorded in [docs/PHASE_0_VERIFICATION.md](docs/PHA
 
 ## Demo Screenshots
 
-Screenshots are not committed yet. Use the capture checklist in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
+Committed proof captures live in [`docs/screenshots/`](docs/screenshots/) and follow the capture plan in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
 
-Suggested set:
+Key previews:
 
-- repo overview
-- Docker Compose stack running
-- API health check
-- API status response
-- Prometheus targets page
-- Prometheus metrics query
-- Grafana dashboard
-- Alertmanager page
-- Helm template output
-- local verification script output
+![Docker Compose stack](docs/screenshots/02-docker-compose-stack.png)
+![Prometheus targets](docs/screenshots/05-prometheus-targets.png)
+![Grafana dashboard](docs/screenshots/07-grafana-dashboard.png)
+
+Full set:
+
+- [01 repo overview](docs/screenshots/01-repo-overview.png)
+- [02 Docker Compose stack](docs/screenshots/02-docker-compose-stack.png)
+- [03 API health check](docs/screenshots/03-api-healthz.png)
+- [04 API status response](docs/screenshots/04-api-status-response.png)
+- [05 Prometheus targets](docs/screenshots/05-prometheus-targets.png)
+- [06 Prometheus metrics query](docs/screenshots/06-prometheus-metrics.png)
+- [07 Grafana dashboard](docs/screenshots/07-grafana-dashboard.png)
+- [08 Alertmanager page](docs/screenshots/08-alertmanager.png)
+- [09 Helm template output](docs/screenshots/09-helm-template.png)
+- [10 local verification script](docs/screenshots/10-local-verification.png)
 
 ## Configuration
 
