@@ -7,7 +7,7 @@
   "panels": [
     {
       "type": "stat",
-      "title": "Total API Requests (5m)",
+      "title": "API Requests 5m",
       "id": 1,
       "datasource": "Prometheus",
       "targets": [
@@ -31,7 +31,7 @@
     },
     {
       "type": "stat",
-      "title": "Successful Pings (5m) - google.com",
+      "title": "Google Success 5m",
       "id": 2,
       "datasource": "Prometheus",
       "targets": [
@@ -71,7 +71,7 @@
     },
     {
       "type": "stat",
-      "title": "Successful Pings (5m) - github.com",
+      "title": "GitHub Success 5m",
       "id": 3,
       "datasource": "Prometheus",
       "targets": [
@@ -111,7 +111,7 @@
     },
     {
       "type": "stat",
-      "title": "Availability % (5m) - google.com",
+      "title": "Google Avail 5m",
       "id": 4,
       "datasource": "Prometheus",
       "targets": [
@@ -155,7 +155,7 @@
     },
     {
       "type": "stat",
-      "title": "Availability % (5m) - github.com",
+      "title": "GitHub Avail 5m",
       "id": 21,
       "datasource": "Prometheus",
       "targets": [
@@ -199,7 +199,7 @@
     },
     {
       "type": "stat",
-      "title": "Failed Pings (5m) - google.com",
+      "title": "Google Fail 5m",
       "id": 22,
       "datasource": "Prometheus",
       "targets": [
@@ -239,7 +239,7 @@
     },
     {
       "type": "stat",
-      "title": "Failed Pings (5m) - github.com",
+      "title": "GitHub Fail 5m",
       "id": 23,
       "datasource": "Prometheus",
       "targets": [
@@ -279,7 +279,7 @@
     },
     {
       "type": "stat",
-      "title": "API Error % (5m)",
+      "title": "API Error 5m",
       "id": 14,
       "datasource": "Prometheus",
       "targets": [
