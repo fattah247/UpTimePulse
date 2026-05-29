@@ -1,15 +1,18 @@
 # iYup
 
-![Docker Compose](https://img.shields.io/badge/Docker_Compose-supported-blue)
-![Prometheus](https://img.shields.io/badge/Prometheus-2.54-orange)
-![Grafana](https://img.shields.io/badge/Grafana-supported-F46800)
-![Helm](https://img.shields.io/badge/Helm-rendered-0F1689)
-![Go](https://img.shields.io/badge/Go-1.23-00ADD8)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
+I built iYup to show how a small monitoring stack fits together: active checks, Prometheus scraping, Grafana dashboards, Alertmanager wiring, a status API, Docker Compose, and Helm packaging.
 
-iYup is a self-hosted uptime and latency monitoring lab built to demonstrate SRE and platform engineering fundamentals: active health checks, Prometheus metrics, Grafana dashboards, alert routing, Docker Compose deployment, and Kubernetes packaging.
+It is not a SaaS clone. It is a small lab with real commands, real screenshots, and a verification path that can be rerun locally.
 
-It is not a managed observability SaaS clone. The goal is to show how service reliability signals move from endpoint checks into metrics, dashboards, API responses, and alerts.
+## What It Proves
+
+- active HTTP checks from `ping-agent`
+- Prometheus metrics from `ping-agent` and `api-gateway`
+- status and target APIs over live monitoring data
+- latency percentiles and windowed uptime summaries
+- Grafana dashboard provisioning in Docker Compose
+- Alertmanager wiring from Prometheus rules
+- local Docker Compose startup and Helm render checks
 
 ## Run It Locally
 
@@ -19,91 +22,44 @@ docker compose up -d
 ./scripts/verify-local.sh
 ```
 
-Then open:
+Open:
 
 - API: `http://localhost:8080/status`
 - Prometheus: `http://localhost:9090/targets`
 - Grafana: `http://localhost:3000`
 - Alertmanager: `http://localhost:9093`
 
-If you change ports in `.env`, use those values below.
-
-## What Works
-
-- active HTTP checks from `ping-agent`
-- JSON status reporting from `api-gateway`
-- Prometheus metrics from both services
-- local Docker Compose startup with health-gated dependencies
-- Grafana datasource and dashboard provisioning in Docker Compose
-- Prometheus alert rules with an Alertmanager routing path
-- Helm chart rendering for Kubernetes packaging
+If `.env` overrides host ports, use those values instead. The copyable commands are in [docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md).
 
 ## System Flow
 
 ```mermaid
 flowchart TD
     A[Monitored Targets] --> B[Ping Agent]
-    B --> C[Metrics Endpoint]
+    B --> C[Prometheus Metrics]
     C --> D[Prometheus]
     D --> E[Grafana]
     D --> F[Alert Rules]
     F --> G[Alertmanager]
-    D --> H[API Gateway]
+    C --> H[API Gateway]
     H --> I[Status API]
-    I --> J[Status Consumer]
 ```
 
 ## Verification
+
+Run:
 
 ```bash
 ./scripts/verify-local.sh
 ```
 
-The script:
+Phase 0 command logs are in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
 
-- validates `docker compose config`
-- starts the local stack
-- waits for API readiness
-- checks `/healthz`, `/status`, `/targets`, and `/metrics`
-- checks Prometheus readiness
-- checks Grafana and Alertmanager availability when those services are in Compose
-
-Phase 0 command logs and outcomes are in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
-
-The proof checklist is in [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md). Port-aware demo commands are in [docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md).
-
-## What This Proves for SRE / Platform Roles
-
-- active HTTP health checks against configurable targets
-- Prometheus metric exposure from the checker and the API layer
-- API status reporting for external consumers
-- latency visibility through last-value and percentile summaries
-- availability visibility through counters and Prometheus-backed windows
-- Grafana dashboard provisioning in local Docker Compose
-- alert routing path from Prometheus rules to Alertmanager
-- Docker Compose local operation with repeatable startup checks
-- Helm and Kubernetes manifest validation through lint and template rendering
-- local verification script you can rerun
-
-## API Surface
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /healthz` | API health check |
-| `GET /status` | Current target status, last latency, percentiles, and availability |
-| `GET /targets` | Target list derived from `PING_TARGET_URLS` |
-| `GET /targets/{url}` | Per-target details, including latency percentiles |
-| `GET /uptime-summary` | Lifetime success, failure, and availability from ping-agent counters |
-| `GET /uptime-summary-windowed?window=5m` | Windowed availability from Prometheus queries |
-| `GET /metrics` | Prometheus metrics for the API gateway |
-
-`/uptime-summary-windowed` uses Prometheus `increase()`, so short windows can return fractional success and failure values.
+The current proof status is in [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md).
 
 ## Demo Screenshots
 
-The screenshots live in [`docs/screenshots/`](docs/screenshots/). The capture checklist is in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md), and the proof status is tracked in [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md).
-
-Key previews:
+The screenshots live in [`docs/screenshots/`](docs/screenshots/). The capture commands are in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
 
 ![Docker Compose stack](docs/screenshots/02-docker-compose-stack.png)
 ![Prometheus targets](docs/screenshots/05-prometheus-targets.png)
@@ -122,61 +78,54 @@ Full set:
 - [09 Helm template output](docs/screenshots/09-helm-template.png)
 - [10 local verification script](docs/screenshots/10-local-verification.png)
 
+## API Surface
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /healthz` | API health check |
+| `GET /targets` | configured target list |
+| `GET /status` | current status, latency, percentiles, and availability |
+| `GET /targets/{url}` | per-target detail |
+| `GET /uptime-summary` | lifetime success, failure, and availability |
+| `GET /uptime-summary-windowed?window=5m` | Prometheus-backed uptime window |
+| `GET /metrics` | Prometheus metrics for the API gateway |
+
 ## Configuration
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PING_TARGET_URLS` | `https://google.com,https://github.com` | Comma-separated target URLs |
-| `PING_INTERVAL_SECONDS` | `30` | Ping cadence |
-| `PING_CONCURRENCY` | `5` | Parallel ping workers |
-| `PING_RETRY_COUNT` | `2` | Additional ping retries before marking a target down |
-| `PING_HTTP_METHOD` | `GET` | Request method |
-| `PING_RANGE_REQUEST` | `true` | Sends `Range: bytes=0-0` on `GET` requests |
-| `PROMETHEUS_QUERY_CACHE_SECONDS` | `15` | API cache TTL for Prometheus-backed window queries |
-| `PING_AGENT_PORT` | `18080` | Host port for ping-agent metrics |
-| `API_GATEWAY_PORT` | `8080` | Host port for the API gateway |
-| `PROMETHEUS_PORT` | `9090` | Host port for Prometheus |
-| `GRAFANA_PORT` | `3000` | Host port for Grafana |
-| `ALERTMANAGER_PORT` | `9093` | Host port for Alertmanager |
-| `GRAFANA_PASSWORD` | `admin` | Grafana admin password for Docker Compose |
-| `PROMETHEUS_RETENTION` | `14d` | Prometheus retention period |
+| `PING_TARGET_URLS` | `https://google.com,https://github.com` | comma-separated targets |
+| `PING_INTERVAL_SECONDS` | `30` | check cadence |
+| `PING_CONCURRENCY` | `5` | parallel workers |
+| `PING_RETRY_COUNT` | `2` | retries before down |
+| `PROMETHEUS_QUERY_CACHE_SECONDS` | `15` | cache TTL for windowed queries |
+| `API_GATEWAY_PORT` | `8080` | API host port |
+| `PING_AGENT_PORT` | `18080` | ping-agent host port |
+| `PROMETHEUS_PORT` | `9090` | Prometheus host port |
+| `GRAFANA_PORT` | `3000` | Grafana host port |
+| `ALERTMANAGER_PORT` | `9093` | Alertmanager host port |
+| `GRAFANA_PASSWORD` | `admin` | Grafana admin password in Docker Compose |
 
 ## Limitations
 
-- does not replace managed observability platforms
-- does not provide distributed tracing
-- does not provide log aggregation
-- does not guarantee production-grade alert tuning
-- does not include real notification credentials
-- does not implement incident management workflows
-- not multi-region
-- Helm rendering is validated, but no live Kubernetes cluster behavior is claimed here
+- no distributed tracing
+- no log aggregation
+- no real notification credentials
+- no incident workflow tooling
+- no multi-region behavior
+- Helm is render-validated here, not cluster-validated
 
-## Project Layout
+## Docs
 
-```text
-iYup/
-├── services/
-│   ├── ping-agent/
-│   └── api-gateway/
-├── config/
-├── monitoring/
-├── charts/iyup/
-├── scripts/
-└── docs/
-```
-
-## Documentation
-
-- [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md)
-- [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md)
-- [docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md)
-- [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md)
-- [docs/RELIABILITY_SCENARIOS.md](docs/RELIABILITY_SCENARIOS.md)
-- [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
 - [docs/QUICKSTART.md](docs/QUICKSTART.md)
 - [docs/API.md](docs/API.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 - [docs/GRAFANA.md](docs/GRAFANA.md)
+- [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
 - [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md)
+- [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md)
+- [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md)
+- [docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md)
+- [docs/RELIABILITY_SCENARIOS.md](docs/RELIABILITY_SCENARIOS.md)

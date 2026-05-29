@@ -1,15 +1,26 @@
 # Operations Runbook
 
-These commands use the defaults from `.env.example`. If you change ports in `.env`, swap in those values.
-
-## Start the stack
+Load local ports first:
 
 ```bash
-cp .env.example .env
+set -a
+test -f .env && . ./.env
+set +a
+
+API_GATEWAY_PORT="${API_GATEWAY_PORT:-8080}"
+PING_AGENT_PORT="${PING_AGENT_PORT:-18080}"
+PROMETHEUS_PORT="${PROMETHEUS_PORT:-9090}"
+GRAFANA_PORT="${GRAFANA_PORT:-3000}"
+ALERTMANAGER_PORT="${ALERTMANAGER_PORT:-9093}"
+```
+
+## Start
+
+```bash
 docker compose up -d
 ```
 
-## Stop the stack
+## Stop
 
 ```bash
 docker compose down
@@ -21,68 +32,43 @@ docker compose down
 docker compose ps
 ```
 
-## Check API health
+## Check API
 
 ```bash
-curl -fsS http://localhost:8080/healthz
+curl -fsS "http://localhost:${API_GATEWAY_PORT}/healthz"
+curl -fsS "http://localhost:${API_GATEWAY_PORT}/status" | python3 -m json.tool
+curl -fsS "http://localhost:${API_GATEWAY_PORT}/targets" | python3 -m json.tool
+curl -fsS "http://localhost:${API_GATEWAY_PORT}/metrics"
 ```
 
-## Check status API
+## Check ping-agent metrics
 
 ```bash
-curl -fsS http://localhost:8080/status | jq .
+curl -fsS "http://localhost:${PING_AGENT_PORT}/metrics"
 ```
 
-## Check targets
+## Check Prometheus
 
 ```bash
-curl -fsS http://localhost:8080/targets | jq .
+curl -fsS "http://localhost:${PROMETHEUS_PORT}/-/ready"
+curl -fsS "http://localhost:${PROMETHEUS_PORT}/api/v1/targets" | python3 -m json.tool
 ```
 
-## Check metrics endpoint
-
-```bash
-curl -fsS http://localhost:8080/metrics
-curl -fsS http://localhost:18080/metrics
-```
-
-## Check Prometheus readiness
-
-```bash
-curl -fsS http://localhost:9090/-/ready
-```
-
-## Check Prometheus targets
-
-```bash
-curl -fsS http://localhost:9090/api/v1/targets | jq .
-```
-
-## Open Grafana
+## Open Grafana and Alertmanager
 
 ```text
-http://localhost:3000
+http://localhost:${GRAFANA_PORT}
+http://localhost:${ALERTMANAGER_PORT}
 ```
 
-Default credentials:
-
-- username: `admin`
-- password: `admin` unless overridden by `GRAFANA_PASSWORD`
-
-## Open Alertmanager
-
-```text
-http://localhost:9093
-```
-
-## Run Helm validation
+## Check Helm rendering
 
 ```bash
 helm lint ./charts/iyup
 helm template iyup ./charts/iyup
 ```
 
-## Run local verification
+## Run the local verification script
 
 ```bash
 ./scripts/verify-local.sh

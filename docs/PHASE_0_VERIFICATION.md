@@ -2,6 +2,8 @@
 
 Checked on `2026-05-29`.
 
+This pass verified that the local stack starts and that the documented monitoring surfaces are real.
+
 The machine used for this pass had `API_GATEWAY_PORT=8081` in `.env`, so the API commands below use `localhost:8081`. The documented default is still `8080`.
 
 | Claim | Status | Evidence command | Result | Follow-up |
