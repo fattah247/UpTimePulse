@@ -116,7 +116,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "100 * increase(ping_success_total{target=\"https://google.com\"}[5m]) / clamp_min(increase(ping_success_total{target=\"https://google.com\"}[5m]) + increase(ping_failure_total{target=\"https://google.com\"}[5m]), 1)",
+          "expr": "100 * (sum(increase(ping_success_total{target=\"https://google.com\"}[5m])) or vector(0)) / clamp_min((sum(increase(ping_success_total{target=\"https://google.com\"}[5m])) or vector(0)) + (sum(increase(ping_failure_total{target=\"https://google.com\"}[5m])) or vector(0)), 1)",
           "refId": "A"
         }
       ],
@@ -160,7 +160,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "100 * increase(ping_success_total{target=\"https://github.com\"}[5m]) / clamp_min(increase(ping_success_total{target=\"https://github.com\"}[5m]) + increase(ping_failure_total{target=\"https://github.com\"}[5m]), 1)",
+          "expr": "100 * (sum(increase(ping_success_total{target=\"https://github.com\"}[5m])) or vector(0)) / clamp_min((sum(increase(ping_success_total{target=\"https://github.com\"}[5m])) or vector(0)) + (sum(increase(ping_failure_total{target=\"https://github.com\"}[5m])) or vector(0)), 1)",
           "refId": "A"
         }
       ],
@@ -204,7 +204,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(increase(ping_failure_total{target=\"https://google.com\"}[5m]))",
+          "expr": "sum(increase(ping_failure_total{target=\"https://google.com\"}[5m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -244,7 +244,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(increase(ping_failure_total{target=\"https://github.com\"}[5m]))",
+          "expr": "sum(increase(ping_failure_total{target=\"https://github.com\"}[5m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -284,7 +284,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "100 * sum(rate(api_gateway_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(api_gateway_requests_total[5m])), 1)",
+          "expr": "100 * (sum(rate(api_gateway_requests_total{status=~\"5..\"}[5m])) or vector(0)) / clamp_min(sum(rate(api_gateway_requests_total[5m])), 1)",
           "refId": "A"
         }
       ],
@@ -352,7 +352,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(rate(api_gateway_requests_total{status=~\"5..\"}[5m]))",
+          "expr": "sum(rate(api_gateway_requests_total{status=~\"5..\"}[5m])) or vector(0)",
           "refId": "A"
         }
       ],
@@ -380,7 +380,7 @@
           "refId": "A"
         },
         {
-          "expr": "rate(ping_failure_total{target=\"https://google.com\"}[$__rate_interval])",
+          "expr": "rate(ping_failure_total{target=\"https://google.com\"}[$__rate_interval]) or vector(0)",
           "refId": "B"
         }
       ],
@@ -408,7 +408,7 @@
           "refId": "A"
         },
         {
-          "expr": "rate(ping_failure_total{target=\"https://github.com\"}[$__rate_interval])",
+          "expr": "rate(ping_failure_total{target=\"https://github.com\"}[$__rate_interval]) or vector(0)",
           "refId": "B"
         }
       ],
@@ -600,7 +600,7 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "sum(ALERTS{alertstate=\"firing\"})",
+          "expr": "sum(ALERTS{alertstate=\"firing\"}) or vector(0)",
           "refId": "A"
         }
       ],
