@@ -1,172 +1,139 @@
 # iYup
 
-![Kubernetes](https://img.shields.io/badge/Kubernetes-1.29-blue)
 ![Docker Compose](https://img.shields.io/badge/Docker_Compose-supported-blue)
 ![Prometheus](https://img.shields.io/badge/Prometheus-2.54-orange)
-![Grafana](https://img.shields.io/badge/Grafana-latest-informational)
+![Grafana](https://img.shields.io/badge/Grafana-supported-F46800)
+![Helm](https://img.shields.io/badge/Helm-rendered-0F1689)
 ![Go](https://img.shields.io/badge/Go-1.23-00ADD8)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
 
-Lightweight, self-hosted uptime and latency monitoring. Deploy with Docker Compose or on Kubernetes and monitor your endpoints with Prometheus metrics, Grafana dashboards, and a JSON API — no managed services required.
+`iYup` is a small uptime monitoring stack built around active HTTP checks, a JSON status API, and Prometheus-compatible metrics. It is intended as a practical SRE/platform portfolio project, not a full observability platform.
 
-## What You Get
+## What It Does
 
-- **Real-time status** — Know instantly if your services are up or down via `/status`
-- **Latency percentiles** — p50, p95, p99 response times per target
-- **Availability tracking** — Lifetime and windowed (5m, 1h, 24h, 7d) availability percentages
-- **Prometheus-native** — All metrics in standard Prometheus format, ready for your existing stack
-- **Grafana dashboards** — Pre-configured panels for uptime, latency, and alerting
-- **Alerting** — Alertmanager integration for email/webhook/Slack notifications
-- **REST API** — JSON endpoints for integrating with dashboards, status pages, or CI/CD
-- **Retry with backoff** — Transient failures don't immediately trigger alerts
-
-## Architecture
-
-```
-Targets (your services)
-    | ping
-ping-agent (Go) --> /metrics --> Prometheus --> Grafana
-    | reads                           |
-api-gateway (FastAPI) <-- JSON API   Alertmanager --> notifications
-```
-
-| Component | Purpose |
-|-----------|---------|
-| **ping-agent** | Concurrent HTTP pinger with retry logic (Go) |
-| **api-gateway** | REST API aggregating metrics into JSON (Python/FastAPI) |
-| **Prometheus** | Time-series metrics storage and alerting rules |
-| **Grafana** | Dashboard visualization |
-| **Alertmanager** | Alert routing to email, Slack, webhooks |
+- Runs active HTTP checks from `ping-agent`
+- Exposes operational status through `api-gateway`
+- Publishes Prometheus metrics from both services
+- Starts a local monitoring stack with Docker Compose
+- Provisions a Grafana datasource and dashboard in Docker Compose
+- Wires Prometheus alert rules to Alertmanager
+- Packages the stack as a Helm chart that renders cleanly
 
 ## Quick Start
 
-### Option 1: Docker Compose (recommended for trying it out)
+```bash
+cp .env.example .env
+```
+
+Set `PING_TARGET_URLS` in `.env` to the endpoints you want to monitor. If a default host port is already in use, change the matching `*_PORT` value in `.env`.
 
 ```bash
-# Monitor your own endpoints
-echo 'PING_TARGET_URLS=https://your-api.com,https://your-app.com' > .env
-
-# Start everything
 docker compose up -d
-
-# Check status
-curl http://localhost:8080/status
+./scripts/verify-local.sh
 ```
 
-That's it. Services are available at:
-- **API** — http://localhost:8080
-- **Grafana** — http://localhost:3000 (admin/admin)
-- **Prometheus** — http://localhost:9090
+Default local endpoints:
 
-### Option 2: Kubernetes with Helm
+- API: `http://localhost:8080`
+- Ping metrics: `http://localhost:18080/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+- Alertmanager: `http://localhost:9093`
+
+If you override ports in `.env`, use those values instead. The verification script reads `.env` before it checks the stack.
+
+## Verification
 
 ```bash
-# Start cluster
-minikube start
-
-# Build and deploy
-eval $(minikube -p minikube docker-env)
-docker build -t ping-agent:latest services/ping-agent
-docker build -t api-gateway:latest services/api-gateway
-helm install iyup ./charts/iyup
-
-# Access the API
-kubectl port-forward svc/iyup-api-gateway 8080:80
-curl http://localhost:8080/status
+./scripts/verify-local.sh
 ```
 
-## API Endpoints
+The script:
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /status` | Real-time up/down status, latency, and availability per target |
-| `GET /targets` | List all monitored URLs |
-| `GET /targets/{url}` | Detailed metrics for a single target (latency percentiles, success/failure counts) |
-| `GET /uptime-summary` | Lifetime availability across all targets |
-| `GET /uptime-summary-windowed?window=1h` | Windowed availability (requires Prometheus) |
-| `GET /healthz` | Health check |
-| `GET /metrics` | Prometheus metrics export |
+- validates `docker compose config`
+- starts the local stack
+- waits for API readiness
+- checks `/healthz`, `/status`, `/targets`, and `/metrics`
+- checks Prometheus readiness
+- checks Grafana and Alertmanager availability when those services are in Compose
 
-### Example: `/status` response
+Detailed phase-0 results are tracked in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
 
-```json
-{
-  "status": "operational",
-  "targets": [
-    {
-      "url": "https://google.com",
-      "up": true,
-      "latency_ms": 45.2,
-      "availability": 99.98,
-      "total_checks": 2847,
-      "latency_percentiles_ms": {
-        "p50": 42.1,
-        "p95": 89.3,
-        "p99": 152.7
-      }
-    }
-  ]
-}
-```
+## API Surface
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /healthz` | API health check |
+| `GET /status` | Current target status, last latency, percentiles, and availability |
+| `GET /targets` | Target list derived from `PING_TARGET_URLS` |
+| `GET /targets/{url}` | Per-target details, including latency percentiles |
+| `GET /uptime-summary` | Lifetime success, failure, and availability from ping-agent counters |
+| `GET /uptime-summary-windowed?window=5m` | Windowed availability from Prometheus queries |
+| `GET /metrics` | Prometheus metrics for the API gateway |
+
+`/uptime-summary-windowed` uses Prometheus `increase()`, so short windows can return fractional success and failure values.
 
 ## Configuration
 
-### Targets
-
-**Docker Compose** — set in `.env`:
-```bash
-PING_TARGET_URLS=https://your-api.com,https://your-app.com
-```
-
-**Kubernetes** — set in `charts/iyup/values.yaml`:
-```yaml
-pingTargets:
-  - https://your-api.com
-  - https://your-app.com
-```
-
-### All Options
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PING_TARGET_URLS` | `google.com,github.com` | Comma-separated target URLs |
-| `PING_INTERVAL_SECONDS` | `30` | Seconds between ping cycles |
+| Variable | Default | Purpose |
+|---|---|---|
+| `PING_TARGET_URLS` | `https://google.com,https://github.com` | Comma-separated target URLs |
+| `PING_INTERVAL_SECONDS` | `30` | Ping cadence |
 | `PING_CONCURRENCY` | `5` | Parallel ping workers |
-| `PING_RETRY_COUNT` | `2` | Retries before marking a target down |
-| `PING_HTTP_METHOD` | `GET` | HTTP method (GET/HEAD) |
-| `PING_RANGE_REQUEST` | `true` | Use Range header to minimize bandwidth |
-| `PROMETHEUS_URL` | auto-configured | Prometheus base URL (enables windowed queries) |
-| `PROMETHEUS_QUERY_CACHE_SECONDS` | `15` | Cache TTL for Prometheus queries |
-| `CORS_ORIGINS` | `*` | Allowed CORS origins (comma-separated) |
-| `GRAFANA_PASSWORD` | `admin` | Grafana admin password (Docker Compose only) |
-| `PROMETHEUS_RETENTION` | `14d` | Prometheus data retention period |
+| `PING_RETRY_COUNT` | `2` | Additional ping retries before marking a target down |
+| `PING_HTTP_METHOD` | `GET` | Request method |
+| `PING_RANGE_REQUEST` | `true` | Sends `Range: bytes=0-0` on `GET` requests |
+| `PROMETHEUS_QUERY_CACHE_SECONDS` | `15` | API cache TTL for Prometheus-backed window queries |
+| `PING_AGENT_PORT` | `18080` | Host port for ping-agent metrics |
+| `API_GATEWAY_PORT` | `8080` | Host port for the API gateway |
+| `PROMETHEUS_PORT` | `9090` | Host port for Prometheus |
+| `GRAFANA_PORT` | `3000` | Host port for Grafana |
+| `ALERTMANAGER_PORT` | `9093` | Host port for Alertmanager |
+| `GRAFANA_PASSWORD` | `admin` | Grafana admin password for Docker Compose |
+| `PROMETHEUS_RETENTION` | `14d` | Prometheus retention period |
+
+## What This Proves for SRE / Platform Roles
+
+- active health checks against configurable HTTP targets
+- Prometheus metric exposure from both the checker and the API layer
+- availability and latency visibility, including percentile summaries
+- Grafana dashboard provisioning in local Docker Compose
+- Alertmanager routing path from Prometheus rule evaluation to receiver config
+- Docker Compose local operations with health-gated startup
+- Kubernetes manifest and Helm render validation
+- API surface that can feed status integrations or operational tooling
+
+## Limitations
+
+- does not replace managed observability platforms
+- does not provide distributed tracing
+- does not provide log aggregation
+- does not guarantee production-grade alert tuning
+- does not include real notification credentials
+- does not implement incident management workflows
+- not multi-region
+- Helm rendering is validated in Phase 0, but no live Kubernetes cluster verification is claimed here
+
+## Project Layout
+
+```text
+iYup/
+├── services/
+│   ├── ping-agent/
+│   └── api-gateway/
+├── config/
+├── monitoring/
+├── charts/iyup/
+├── scripts/
+└── docs/
+```
 
 ## Documentation
 
-- **[Quickstart Guide](docs/QUICKSTART.md)** — Get running in 5 minutes
-- **[Deployment Guide](docs/DEPLOYMENT.md)** — Helm charts and configuration
-- **[Architecture](docs/ARCHITECTURE.md)** — System design and data flows
-- **[API Reference](docs/API.md)** — Full endpoint documentation
-- **[Grafana Setup](docs/GRAFANA.md)** — Dashboard configuration
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** — Common issues and solutions
-- **[Reliability & Testing](docs/RELIABILITY.md)** — Testing infrastructure
-- **[Data Validation](docs/DATA_VALIDATION.md)** — Prometheus data quality checks
-- **[Command Reference](docs/REFERENCE.md)** — Commands and cheat sheets
-
-## Project Structure
-
-```
-iYup/
-├── services/
-│   ├── ping-agent/       # Go HTTP pinger with Prometheus metrics
-│   └── api-gateway/      # FastAPI JSON API
-├── config/               # Prometheus, Alertmanager, Grafana configs (Docker Compose)
-├── charts/iyup/          # Helm chart (Kubernetes deployment)
-├── monitoring/           # Grafana dashboards
-├── scripts/              # Utility and testing scripts
-└── docs/                 # Documentation
-```
-
-## License
-
-MIT — use it however you want.
+- [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md)
+- [docs/QUICKSTART.md](docs/QUICKSTART.md)
+- [docs/API.md](docs/API.md)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- [docs/GRAFANA.md](docs/GRAFANA.md)
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
