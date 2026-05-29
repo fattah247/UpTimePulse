@@ -70,6 +70,8 @@ The script:
 
 Phase 0 command logs and outcomes are in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
 
+The proof checklist is in [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md). Port-aware demo commands are in [docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md).
+
 ## What This Proves for SRE / Platform Roles
 
 - active HTTP health checks against configurable targets
@@ -99,7 +101,7 @@ Phase 0 command logs and outcomes are in [docs/PHASE_0_VERIFICATION.md](docs/PHA
 
 ## Demo Screenshots
 
-The screenshots live in [`docs/screenshots/`](docs/screenshots/). The capture checklist is in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
+The screenshots live in [`docs/screenshots/`](docs/screenshots/). The capture checklist is in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md), and the proof status is tracked in [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md).
 
 Key previews:
 
@@ -167,6 +169,8 @@ iYup/
 ## Documentation
 
 - [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md)
+- [docs/PORTFOLIO_PROOF_CHECKLIST.md](docs/PORTFOLIO_PROOF_CHECKLIST.md)
+- [docs/DEMO_COMMANDS.md](docs/DEMO_COMMANDS.md)
 - [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md)
 - [docs/RELIABILITY_SCENARIOS.md](docs/RELIABILITY_SCENARIOS.md)
 - [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
