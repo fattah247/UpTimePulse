@@ -283,7 +283,7 @@ def run_reliability_test():
 
 
 def generate_report():
-    """Generate a comprehensive test report."""
+    """Generate the test report."""
     log("\n" + "=" * 80)
     log("RELIABILITY TEST REPORT")
     log("=" * 80)
