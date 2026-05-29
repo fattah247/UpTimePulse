@@ -7,40 +7,51 @@
 ![Go](https://img.shields.io/badge/Go-1.23-00ADD8)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
 
-`iYup` is a small uptime monitoring stack built around active HTTP checks, a JSON status API, and Prometheus-compatible metrics. It is intended as a practical SRE/platform portfolio project, not a full observability platform.
+iYup is a self-hosted uptime and latency monitoring lab built to demonstrate SRE and platform engineering fundamentals: active health checks, Prometheus metrics, Grafana dashboards, alert routing, Docker Compose deployment, and Kubernetes packaging.
 
-## What It Does
+It is not a managed observability SaaS clone. The goal is to show how service reliability signals move from endpoint checks into metrics, dashboards, API responses, and alerts.
 
-- Runs active HTTP checks from `ping-agent`
-- Exposes operational status through `api-gateway`
-- Publishes Prometheus metrics from both services
-- Starts a local monitoring stack with Docker Compose
-- Provisions a Grafana datasource and dashboard in Docker Compose
-- Wires Prometheus alert rules to Alertmanager
-- Packages the stack as a Helm chart that renders cleanly
-
-## Quick Start
+## Reviewer Path
 
 ```bash
 cp .env.example .env
-```
-
-Set `PING_TARGET_URLS` in `.env` to the endpoints you want to monitor. If a default host port is already in use, change the matching `*_PORT` value in `.env`.
-
-```bash
 docker compose up -d
 ./scripts/verify-local.sh
 ```
 
-Default local endpoints:
+Then check:
 
-- API: `http://localhost:8080`
-- Ping metrics: `http://localhost:18080/metrics`
-- Prometheus: `http://localhost:9090`
+- API: `http://localhost:8080/status`
+- Prometheus: `http://localhost:9090/targets`
 - Grafana: `http://localhost:3000`
 - Alertmanager: `http://localhost:9093`
 
-If you override ports in `.env`, use those values instead. The verification script reads `.env` before it checks the stack.
+If your `.env` overrides host ports, use those values instead.
+
+## What Works
+
+- active HTTP checks from `ping-agent`
+- JSON status reporting from `api-gateway`
+- Prometheus metrics from both services
+- local Docker Compose startup with health-gated dependencies
+- Grafana datasource and dashboard provisioning in Docker Compose
+- Prometheus alert rules with an Alertmanager routing path
+- Helm chart rendering for Kubernetes packaging
+
+## System Flow
+
+```mermaid
+flowchart TD
+    A[Monitored Targets] --> B[Ping Agent]
+    B --> C[Metrics Endpoint]
+    C --> D[Prometheus]
+    D --> E[Grafana]
+    D --> F[Alert Rules]
+    F --> G[Alertmanager]
+    D --> H[API Gateway]
+    H --> I[Status API]
+    I --> J[Reviewer or Status Page]
+```
 
 ## Verification
 
@@ -57,7 +68,20 @@ The script:
 - checks Prometheus readiness
 - checks Grafana and Alertmanager availability when those services are in Compose
 
-Detailed phase-0 results are tracked in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
+Detailed Phase 0 evidence is recorded in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
+
+## What This Proves for SRE / Platform Roles
+
+- active HTTP health checks against configurable targets
+- Prometheus metric exposure from the checker and the API layer
+- API status reporting for external consumers
+- latency visibility through last-value and percentile summaries
+- availability visibility through counters and Prometheus-backed windows
+- Grafana dashboard provisioning in local Docker Compose
+- alert routing path from Prometheus rules to Alertmanager
+- Docker Compose local operation with repeatable startup checks
+- Helm and Kubernetes manifest validation through lint and template rendering
+- local verification workflow that a reviewer can rerun
 
 ## API Surface
 
@@ -72,6 +96,23 @@ Detailed phase-0 results are tracked in [docs/PHASE_0_VERIFICATION.md](docs/PHAS
 | `GET /metrics` | Prometheus metrics for the API gateway |
 
 `/uptime-summary-windowed` uses Prometheus `increase()`, so short windows can return fractional success and failure values.
+
+## Demo Screenshots
+
+Screenshots are not committed yet. Use the capture checklist in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
+
+Suggested set:
+
+- repo overview
+- Docker Compose stack running
+- API health check
+- API status response
+- Prometheus targets page
+- Prometheus metrics query
+- Grafana dashboard
+- Alertmanager page
+- Helm template output
+- local verification script output
 
 ## Configuration
 
@@ -92,17 +133,6 @@ Detailed phase-0 results are tracked in [docs/PHASE_0_VERIFICATION.md](docs/PHAS
 | `GRAFANA_PASSWORD` | `admin` | Grafana admin password for Docker Compose |
 | `PROMETHEUS_RETENTION` | `14d` | Prometheus retention period |
 
-## What This Proves for SRE / Platform Roles
-
-- active health checks against configurable HTTP targets
-- Prometheus metric exposure from both the checker and the API layer
-- availability and latency visibility, including percentile summaries
-- Grafana dashboard provisioning in local Docker Compose
-- Alertmanager routing path from Prometheus rule evaluation to receiver config
-- Docker Compose local operations with health-gated startup
-- Kubernetes manifest and Helm render validation
-- API surface that can feed status integrations or operational tooling
-
 ## Limitations
 
 - does not replace managed observability platforms
@@ -112,7 +142,7 @@ Detailed phase-0 results are tracked in [docs/PHASE_0_VERIFICATION.md](docs/PHAS
 - does not include real notification credentials
 - does not implement incident management workflows
 - not multi-region
-- Helm rendering is validated in Phase 0, but no live Kubernetes cluster verification is claimed here
+- Helm rendering is validated, but no live Kubernetes cluster behavior is claimed here
 
 ## Project Layout
 
@@ -131,6 +161,9 @@ iYup/
 ## Documentation
 
 - [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md)
+- [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md)
+- [docs/RELIABILITY_SCENARIOS.md](docs/RELIABILITY_SCENARIOS.md)
+- [docs/OPERATIONS_RUNBOOK.md](docs/OPERATIONS_RUNBOOK.md)
 - [docs/QUICKSTART.md](docs/QUICKSTART.md)
 - [docs/API.md](docs/API.md)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

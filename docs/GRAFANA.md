@@ -160,7 +160,7 @@ kubectl port-forward svc/iyup-grafana 3000:3000
 ### 2. Open Grafana
 
 - URL: `http://localhost:3000`
-- Default credentials: `admin` / `admin` (Grafana will prompt to change on first login)
+- Default credentials: `admin` / `admin` (Grafana asks you to change them on first login)
 
 ### 3. Add Prometheus Data Source
 
