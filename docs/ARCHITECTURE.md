@@ -1,6 +1,6 @@
 # iYup Architecture & Template Map
 
-This document complements the [README](../README.md) with diagrams and a file-by-file map of the Helm chart. For quickstart/commands and service details, see [Quickstart Guide](QUICKSTART.md). For reliability improvements and testing, see [Reliability & Testing](RELIABILITY.md). This doc is the architecture/map view.
+This is the architecture and chart map for iYup. For setup commands, see [Quickstart Guide](QUICKSTART.md). For reliability notes and test coverage, see [Reliability & Testing](RELIABILITY.md).
 
 ## High-level flow (mermaid)
 Runtime data/control flow. The Helm/deployment flow is shown in `README.md`.

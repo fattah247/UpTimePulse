@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-Common issues and their solutions when working with iYup.
+Common problems I hit while wiring iYup together, plus the checks that resolved them.
 
 ## Goal
 

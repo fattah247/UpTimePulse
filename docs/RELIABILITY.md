@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document details all reliability improvements made to the iYup monitoring system, issues found during code review, and instructions for running long-term reliability tests.
+This report tracks the reliability fixes, the issues they addressed, and the long-run test commands tied to them.
 
 **Quick Links:**
 - [Architecture Overview](ARCHITECTURE.md) - System architecture and component details
@@ -13,7 +13,7 @@ This document details all reliability improvements made to the iYup monitoring s
 
 ## Summary
 
-All identified reliability issues have been fixed and the system is production-ready:
+These fixes improve the stack, but they do not prove production readiness:
 - ✅ Type annotation errors resolved
 - ✅ Retry logic added for HTTP requests
 - ✅ Timeout configuration improved

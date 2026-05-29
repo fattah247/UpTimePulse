@@ -1,6 +1,6 @@
 # Screenshot Guide
 
-Use this guide to capture or refresh the committed Phase 1 proof set under `docs/screenshots/`. If your `.env` overrides host ports, substitute those values in the URLs below.
+Screenshot checklist for the files in `docs/screenshots/`. If you change ports in `.env`, use those values in the commands and URLs below.
 
 | File | Command or URL | What it proves | Capture note |
 |---|---|---|---|

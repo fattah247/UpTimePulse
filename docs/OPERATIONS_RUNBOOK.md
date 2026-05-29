@@ -1,6 +1,6 @@
 # Operations Runbook
 
-Examples below assume the default ports from `.env.example`. If your `.env` overrides host ports, substitute those values.
+These commands use the defaults from `.env.example`. If you change ports in `.env`, swap in those values.
 
 ## Start the stack
 

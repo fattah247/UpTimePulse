@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Complete guide to deploying and configuring iYup.
+Deployment and update notes for iYup.
 
 ## Updating to Latest Codebase
 

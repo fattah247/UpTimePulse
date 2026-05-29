@@ -1,6 +1,6 @@
 # Data Validation Guide
 
-How to validate Prometheus data quality and ensure Grafana displays correct values.
+How to check that Prometheus data looks sane and Grafana is reading the right values.
 
 ## Quick Start
 

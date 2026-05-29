@@ -1,6 +1,6 @@
 # Quickstart Guide
 
-Get iYup up and running in minutes.
+Fast paths for running iYup locally or in Minikube.
 
 ## Prerequisites
 

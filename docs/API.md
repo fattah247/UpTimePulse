@@ -1,6 +1,6 @@
 # API Reference
 
-Complete reference for the iYup API Gateway endpoints.
+Reference for the iYup API Gateway endpoints.
 
 ## Base URL
 

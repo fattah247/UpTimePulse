@@ -11,7 +11,7 @@ iYup is a self-hosted uptime and latency monitoring lab built to demonstrate SRE
 
 It is not a managed observability SaaS clone. The goal is to show how service reliability signals move from endpoint checks into metrics, dashboards, API responses, and alerts.
 
-## Reviewer Path
+## Run It Locally
 
 ```bash
 cp .env.example .env
@@ -19,14 +19,14 @@ docker compose up -d
 ./scripts/verify-local.sh
 ```
 
-Then check:
+Then open:
 
 - API: `http://localhost:8080/status`
 - Prometheus: `http://localhost:9090/targets`
 - Grafana: `http://localhost:3000`
 - Alertmanager: `http://localhost:9093`
 
-If your `.env` overrides host ports, use those values instead.
+If you change ports in `.env`, use those values below.
 
 ## What Works
 
@@ -50,7 +50,7 @@ flowchart TD
     F --> G[Alertmanager]
     D --> H[API Gateway]
     H --> I[Status API]
-    I --> J[Reviewer or Status Page]
+    I --> J[Status Consumer]
 ```
 
 ## Verification
@@ -68,7 +68,7 @@ The script:
 - checks Prometheus readiness
 - checks Grafana and Alertmanager availability when those services are in Compose
 
-Detailed Phase 0 evidence is recorded in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
+Phase 0 command logs and outcomes are in [docs/PHASE_0_VERIFICATION.md](docs/PHASE_0_VERIFICATION.md).
 
 ## What This Proves for SRE / Platform Roles
 
@@ -81,7 +81,7 @@ Detailed Phase 0 evidence is recorded in [docs/PHASE_0_VERIFICATION.md](docs/PHA
 - alert routing path from Prometheus rules to Alertmanager
 - Docker Compose local operation with repeatable startup checks
 - Helm and Kubernetes manifest validation through lint and template rendering
-- local verification workflow that a reviewer can rerun
+- local verification script you can rerun
 
 ## API Surface
 
@@ -99,7 +99,7 @@ Detailed Phase 0 evidence is recorded in [docs/PHASE_0_VERIFICATION.md](docs/PHA
 
 ## Demo Screenshots
 
-Committed proof captures live in [`docs/screenshots/`](docs/screenshots/) and follow the capture plan in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
+The screenshots live in [`docs/screenshots/`](docs/screenshots/). The capture checklist is in [docs/SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md).
 
 Key previews:
 

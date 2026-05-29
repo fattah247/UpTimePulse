@@ -1,6 +1,6 @@
 # Command Reference
 
-Quick reference for commands, flags, and cheat sheets used in iYup.
+Command reference for the checks and workflows used in iYup.
 
 ## Command Notes
 

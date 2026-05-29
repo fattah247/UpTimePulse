@@ -1,8 +1,8 @@
 # Phase 0 Verification
 
-Verified on `2026-05-29`.
+Checked on `2026-05-29`.
 
-This workspace had a local `.env` override of `API_GATEWAY_PORT=8081`, so API verification commands below use `localhost:8081`. The default documented port remains `8080`.
+The machine used for this pass had `API_GATEWAY_PORT=8081` in `.env`, so the API commands below use `localhost:8081`. The documented default is still `8080`.
 
 | Claim | Status | Evidence command | Result | Follow-up |
 |---|---|---|---|---|
@@ -26,4 +26,3 @@ This workspace had a local `.env` override of `API_GATEWAY_PORT=8081`, so API ve
 | Latency percentiles exist if claimed | Verified | `curl -fsS http://localhost:8081/status`<br>`curl -fsS 'http://localhost:8081/targets/https%3A%2F%2Fgoogle.com'` | Both endpoints returned `latency_percentiles_ms` with `p50`, `p95`, and `p99`. | None. |
 | Availability windows exist if claimed | Verified | `curl -fsS 'http://localhost:8081/uptime-summary-windowed?window=5m'` | Returned windowed success, failure, and availability data for the current targets. | Short-window counts can be fractional because Prometheus `increase()` extrapolates counter deltas. |
 | Tests exist and pass, or document what is missing | Verified | `go test ./...`<br>`python -m unittest discover -s services/api-gateway -p 'test*.py'` | Go tests passed (`3` tests). Python tests passed (`21` tests). | Minimal Go coverage was added for target parsing and default target behavior. |
-

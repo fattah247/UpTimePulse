@@ -39,7 +39,7 @@ Expected:
 Notes:
 
 - latency metrics and percentile calculations are implemented and verified on healthy targets
-- a dedicated slow-target exercise is not part of the current proof set
+- a dedicated slow-target exercise is not part of the current screenshot pass
 
 ## Transient failure
 

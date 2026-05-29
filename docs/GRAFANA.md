@@ -1,6 +1,6 @@
 # Grafana Dashboard Setup
 
-Complete guide to setting up and using Grafana dashboards with iYup.
+Grafana setup, provisioning, and dashboard checks for iYup.
 
 ## Getting Latest Data from Updated Codebase
 
@@ -385,7 +385,7 @@ This script:
 - ✅ Identifies missing metrics or data issues
 - ✅ Displays results in a readable format
 
-**Use this to verify data correctness before it reaches Grafana!**
+Use these checks to confirm the data before it reaches Grafana.
 
 ### Manual Prometheus Queries
 
