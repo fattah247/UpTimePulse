@@ -10,7 +10,7 @@ services:
       - PING_RANGE_REQUEST=${PING_RANGE_REQUEST:-true}
       - PING_REGION=${PING_REGION:-}
     ports:
-      - "18080:8080"
+      - "${PING_AGENT_PORT:-18080}:8080"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
@@ -27,7 +27,7 @@ services:
       - PROMETHEUS_QUERY_CACHE_SECONDS=${PROMETHEUS_QUERY_CACHE_SECONDS:-15}
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
     ports:
-      - "8080:8080"
+      - "${API_GATEWAY_PORT:-8080}:8080"
     depends_on:
       ping-agent:
         condition: service_healthy
@@ -48,7 +48,7 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-14d}"
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
     depends_on:
       ping-agent:
         condition: service_healthy
@@ -59,13 +59,14 @@ services:
     volumes:
       - grafana-data:/var/lib/grafana
       - ./config/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./config/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./monitoring:/var/lib/grafana/dashboards:ro
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     depends_on:
       - prometheus
-      - loki
     restart: unless-stopped
 
   alertmanager:
@@ -73,18 +74,9 @@ services:
     volumes:
       - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     ports:
-      - "9093:9093"
-    restart: unless-stopped
-
-  loki:
-    image: grafana/loki:latest
-    volumes:
-      - loki-data:/loki
-    ports:
-      - "3100:3100"
+      - "${ALERTMANAGER_PORT:-9093}:9093"
     restart: unless-stopped
 
 volumes:
   prometheus-data:
   grafana-data:
-  loki-data:
