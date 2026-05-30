@@ -16,7 +16,13 @@ Verified in the local Docker Compose run.
 - availability drops
 - the alert rule can fire
 
-This behavior is implemented. The repo does not include a recorded fault-injection replay.
+Replay:
+
+```bash
+./scripts/reliability/down-target-demo.sh
+```
+
+This replay swaps the target to `http://127.0.0.1:9`, waits for a full check cycle, and confirms that the target shows up as down.
 
 ## Slow endpoint
 
@@ -31,7 +37,13 @@ The metrics exist. The repo does not include a dedicated slow-target capture.
 - retry and backoff reduce noise
 - the target should not flap on the first miss
 
-This is based on the current implementation and unit-level verification, not a replay script.
+Replay:
+
+```bash
+./scripts/reliability/transient-target-demo.sh
+```
+
+This replay uses a helper endpoint that returns one `503` and then recovers. The final status stays up and the first miss does not leave a recorded failure.
 
 ## Prometheus unavailable
 
