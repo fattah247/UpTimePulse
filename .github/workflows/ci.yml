@@ -2,15 +2,29 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+      - dev
+      - "features/**"
     paths:
       - "services/ping-agent/**"
       - "services/api-gateway/**"
+      - "charts/**"
+      - "config/**"
+      - "monitoring/**"
+      - "docker-compose.yml"
       - ".github/workflows/**"
   pull_request:
+    branches:
+      - main
+      - dev
     paths:
       - "services/ping-agent/**"
       - "services/api-gateway/**"
+      - "charts/**"
+      - "config/**"
+      - "monitoring/**"
+      - "docker-compose.yml"
       - ".github/workflows/**"
 
 jobs:
@@ -65,3 +79,23 @@ jobs:
         run: docker build -t ping-agent:ci services/ping-agent
       - name: Build api-gateway image
         run: docker build -t api-gateway:ci services/api-gateway
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Docker Compose config
+        run: docker compose config
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+      - name: Helm lint
+        run: helm lint ./charts/iyup
+      - name: Helm template
+        run: helm template iyup ./charts/iyup
