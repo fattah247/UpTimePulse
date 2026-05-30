@@ -13,3 +13,5 @@ Use this table to see which repo claims have command output, screenshots, or bot
 | Alertmanager path | Verified | `docs/screenshots/08-alertmanager.png`, `docs/PHASE_0_VERIFICATION.md` | No real outbound credentials are configured |
 | Helm rendering | Verified | `helm lint ./charts/iyup`, `helm template iyup ./charts/iyup`, `docs/screenshots/09-helm-template.png` | Render check only |
 | Local verification script | Verified | `./scripts/verify-local.sh`, `docs/screenshots/10-local-verification.png` | Repeatable local verification path |
+| Down target replay | Verified | `./scripts/reliability/down-target-demo.sh` | Confirms that a dead target becomes down in the API status |
+| Transient retry replay | Verified | `./scripts/reliability/transient-target-demo.sh` | Confirms one transient `503` does not leave a failure signal |
